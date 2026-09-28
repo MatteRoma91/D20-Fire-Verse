@@ -827,6 +827,55 @@ body[data-room="victory"] .stage-bg::after { box-shadow: inset 0 0 160px rgba(23
   50% { transform: scale(0.72); opacity: 0.55; }
 }
 
+.music-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-width: 13.5rem;
+  padding: 0.28rem 0.85rem 0.28rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(0, 0, 0, 0.35);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.music-toggle:hover,
+.music-toggle:focus-visible { border-color: #e8c040; }
+.music-toggle strong {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 0.78rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.music-toggle.off strong { color: var(--ink-mute); text-decoration: line-through; }
+.music-bars {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  width: 14px;
+  height: 14px;
+}
+.music-bars i {
+  flex: 1;
+  height: 30%;
+  border-radius: 1px;
+  background: #e8c040;
+  opacity: 0.55;
+}
+.music-toggle.live .music-bars i {
+  opacity: 1;
+  animation: music-bar 1.1s ease-in-out infinite;
+}
+.music-toggle.live .music-bars i:nth-child(2) { animation-delay: -0.35s; }
+.music-toggle.live .music-bars i:nth-child(3) { animation-delay: -0.7s; }
+.music-toggle.off .music-bars i { background: var(--ink-mute); }
+@keyframes music-bar {
+  0%, 100% { height: 30%; }
+  50% { height: 100%; }
+}
+
 .turn-banner {
   position: fixed;
   left: 50%;
@@ -881,7 +930,12 @@ body.cinematic .story-narration {
   .home-title { font-size: 2.4rem; }
   #pixi-host { min-height: 52vh; }
 }
+@media (max-width: 720px) {
+  .music-toggle { min-width: 0; }
+  .music-toggle strong { max-width: 8.5rem; overflow: hidden; text-overflow: ellipsis; }
+}
 @media (prefers-reduced-motion: reduce) {
+  .music-toggle.live .music-bars i,
   .house-light .lamp,
   .turn-banner.slam,
   .die,

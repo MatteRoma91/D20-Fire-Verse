@@ -9,6 +9,14 @@ import { renderPcSheet, type PcSheet } from "./pc-sheet";
 import { enqueueDice, onDiceCue } from "./dice-tray";
 import { audio, normalizeScene, sceneLabel, type RoomScene } from "./audio";
 import {
+  duckMusic,
+  onMusicChange,
+  setMusic,
+  toggleMusic,
+  type MusicState,
+  type MusicTrack,
+} from "./music";
+import {
   cellAtPoint,
   mountCombatBoard,
   renderCombatBoard,
@@ -168,6 +176,13 @@ appRoot.innerHTML = `
           <strong id="houseScene">Tavern</strong>
         </span>
       </div>
+      <button type="button" class="music-toggle" id="musicToggle" aria-pressed="true" title="Music (M)">
+        <span class="music-bars" aria-hidden="true"><i></i><i></i><i></i></span>
+        <span>
+          <span class="house-kicker" id="musicKicker">Music</span>
+          <strong id="musicTitle">A Very Potent Brew</strong>
+        </span>
+      </button>
       <div class="conn" id="conn">Connecting…</div>
     </header>
 
@@ -183,7 +198,7 @@ appRoot.innerHTML = `
           <button class="primary" type="button" id="btnEnter">Enter the tavern</button>
           <button class="ghost" type="button" id="btnHomeResume">Resume a save</button>
         </div>
-        <p class="home-hint">Arrows move · Enter confirms · 1–9 choose a line</p>
+        <p class="home-hint">Arrows move · Enter confirms · 1–9 choose a line · M music</p>
       </div>
     </section>
 
@@ -282,6 +297,7 @@ let chargenApi: ReturnType<typeof mountChargen> | null = null;
 let wasCombat = false;
 let lastTurnId = "";
 let turnTimer = 0;
+let speechLine = 0;
 
 let pixi: Application | null = null;
 let gridLayer: Container | null = null;
@@ -322,7 +338,44 @@ function setHouse(raw: string | undefined, fallback: RoomScene) {
   el.dataset.scene = scene;
   $("houseScene").textContent = sceneLabel(scene);
   document.body.dataset.room = scene;
-  audio.setScene(scene);
+}
+
+function musicFor(page: PageId): MusicTrack {
+  switch (page) {
+    case "home":
+      return "title";
+    case "lobby":
+      return "tavern";
+    case "combat": {
+      const combat = state?.combat;
+      if (combat?.status === "defeat") return "tension";
+      const scene = state ? sceneForNode(state.nodeId) : null;
+      return scene && /spider|magma/i.test(scene.title) ? "boss" : "combat";
+    }
+    case "story": {
+      if (!state) return "title";
+      if (state.nodeId === "END_WIN" || state.alexaScene === "victory") return "victory";
+      const tone = sceneForNode(state.nodeId).tone;
+      switch (tone) {
+        case "warm":
+          return "tavern";
+        case "ember":
+          return "tension";
+        case "victory":
+          return "victory";
+        case "cool":
+          return "descent";
+        default: {
+          const exhaustive: never = tone;
+          throw new Error(exhaustive);
+        }
+      }
+    }
+    default: {
+      const exhaustive: never = page;
+      throw new Error(exhaustive);
+    }
+  }
 }
 
 function renderParty() {
@@ -390,6 +443,7 @@ function showPage(page: PageId) {
     combat: "pageCombat",
   };
   $(map[page]).classList.add("active");
+  setMusic(musicFor(page));
 
   if (page === "home") setBackground(ART.home, "warm");
   if (page === "lobby") setBackground(ART.lobby, "warm");
@@ -407,6 +461,13 @@ function speak(text: string) {
   const u = new SpeechSynthesisUtterance(text);
   u.lang = "en-US";
   u.rate = 1.02;
+  const line = (speechLine += 1);
+  u.onstart = () => {
+    if (line === speechLine) duckMusic(true);
+  };
+  u.onend = u.onerror = () => {
+    if (line === speechLine) duckMusic(false);
+  };
   window.speechSynthesis.speak(u);
 }
 
@@ -937,6 +998,12 @@ function renderGame() {
 
 window.addEventListener("keydown", (e) => {
   audio.unlock();
+  const typing = e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement;
+  if (!typing && (e.key === "m" || e.key === "M") && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    e.preventDefault();
+    toggleMusic();
+    return;
+  }
   if (currentPage === "home" && (e.key === "Enter" || e.key === "ArrowRight")) {
     e.preventDefault();
     ($("btnEnter") as HTMLButtonElement).click();
@@ -1031,6 +1098,21 @@ $("btnResume").onclick = () => {
 
 setBackground(ART.home, "warm");
 setHouse("tavern", "tavern");
+let music: MusicState | null = null;
+$("musicToggle").onclick = () => {
+  audio.unlock();
+  if (music?.enabled && !music.playing) return;
+  toggleMusic();
+};
+onMusicChange((m) => {
+  music = m;
+  const button = $("musicToggle");
+  button.setAttribute("aria-pressed", String(m.enabled));
+  button.classList.toggle("off", !m.enabled);
+  button.classList.toggle("live", m.enabled && m.playing);
+  $("musicKicker").textContent = m.enabled ? "Music" : "Music · muted";
+  $("musicTitle").textContent = m.title;
+});
 onDiceCue((roll) => {
   if (roll.isCrit) audio.fanfare();
   else if (roll.isFumble) audio.fumble();

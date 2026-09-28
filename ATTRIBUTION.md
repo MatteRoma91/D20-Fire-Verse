@@ -16,3 +16,9 @@ Full CC-BY-4.0 text: https://creativecommons.org/licenses/by/4.0/
 ## Third-party assets
 
 List art, music, SFX, and fonts here as they are added (title, author, license, URL).
+
+### Music
+
+The seven cues in `tv/public/audio/music/` are original compositions for this project, written and
+synthesized by `tools/music/compose.py`. No samples, loops, or third-party recordings are used.
+They are covered by the repository's MIT license.

@@ -32,3 +32,6 @@ coverage/
 *.log
 .pytest_cache/
 backend/data/
+
+__pycache__/
+*.pyc
