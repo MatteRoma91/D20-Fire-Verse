@@ -1,0 +1,18 @@
+{
+  "name": "d20-fireverse",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "packages/*",
+    "backend",
+    "tv",
+    "companion"
+  ],
+  "scripts": {
+    "dev:backend": "npm run start -w @d20-fireverse/backend",
+    "dev:tv": "npm run dev -w @d20-fireverse/tv",
+    "dev:companion": "npm run dev -w @d20-fireverse/companion",
+    "build:tv": "npm run build -w @d20-fireverse/tv",
+    "build:companion": "npm run build -w @d20-fireverse/companion"
+  }
+}

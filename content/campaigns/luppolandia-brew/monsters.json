@@ -1,0 +1,55 @@
+{
+  "giant_rat": {
+    "id": "giant_rat",
+    "name": "Giant Rat",
+    "size": "small",
+    "type": "beast",
+    "ac": 12,
+    "hp": 7,
+    "speedCells": 6,
+    "abilities": { "str": 7, "dex": 15, "con": 11, "int": 2, "wis": 10, "cha": 4 },
+    "traits": ["pack_tactics"],
+    "actions": ["giant_rat_bite"],
+    "aiProfile": "pack_melee"
+  },
+  "giant_centipede": {
+    "id": "giant_centipede",
+    "name": "Giant Centipede",
+    "size": "small",
+    "type": "beast",
+    "ac": 13,
+    "hp": 4,
+    "speedCells": 6,
+    "abilities": { "str": 5, "dex": 14, "con": 12, "int": 1, "wis": 7, "cha": 3 },
+    "actions": ["centipede_bite"],
+    "aiProfile": "aggressive_melee"
+  },
+  "infernal_spider": {
+    "id": "infernal_spider",
+    "name": "Infernal Spider",
+    "size": "large",
+    "type": "monstrosity",
+    "ac": 14,
+    "hp": 40,
+    "speedCells": 6,
+    "climb": true,
+    "abilities": { "str": 14, "dex": 14, "con": 12, "int": 2, "wis": 11, "cha": 4 },
+    "damageResistances": ["fire"],
+    "actions": ["infernal_spider_bite", "infernal_spider_web"],
+    "aiProfile": "boss_ranged_then_melee"
+  },
+  "magma_rat": {
+    "id": "magma_rat",
+    "name": "Magma Rat",
+    "size": "small",
+    "type": "monstrosity",
+    "ac": 14,
+    "hp": 32,
+    "speedCells": 6,
+    "abilities": { "str": 12, "dex": 15, "con": 14, "int": 2, "wis": 10, "cha": 4 },
+    "damageImmunities": ["fire"],
+    "traits": ["magma_aura"],
+    "actions": ["magma_rat_bite"],
+    "aiProfile": "aggressive_melee"
+  }
+}

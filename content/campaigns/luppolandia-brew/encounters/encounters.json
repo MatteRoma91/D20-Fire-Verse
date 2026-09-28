@@ -1,0 +1,76 @@
+{
+  "cellar_rats": {
+    "id": "cellar_rats",
+    "name": "Cellar Pack",
+    "mapId": "map_cellar",
+    "alexaScene": "combat",
+    "scaling": {
+      "1": [{ "monsterId": "giant_rat", "count": 2 }],
+      "2": [{ "monsterId": "giant_rat", "count": 3 }],
+      "3": [{ "monsterId": "giant_rat", "count": 4 }]
+    },
+    "victory": "all_enemies_defeated"
+  },
+  "hole_rats": {
+    "id": "hole_rats",
+    "name": "Threshold Hole — Rats",
+    "mapId": "map_corridor",
+    "alexaScene": "combat",
+    "scaling": {
+      "1": [{ "monsterId": "giant_rat", "count": 2 }],
+      "2": [{ "monsterId": "giant_rat", "count": 2 }],
+      "3": [{ "monsterId": "giant_rat", "count": 2 }]
+    },
+    "victory": "all_enemies_defeated",
+    "notes": "Oneshot: after 1st side room / first seal."
+  },
+  "well_centipedes": {
+    "id": "well_centipedes",
+    "name": "Well Noise — Centipedes",
+    "mapId": "map_well",
+    "alexaScene": "combat",
+    "scaling": {
+      "1": [{ "monsterId": "giant_centipede", "count": 2 }],
+      "2": [{ "monsterId": "giant_centipede", "count": 3 }],
+      "3": [{ "monsterId": "giant_centipede", "count": 4 }]
+    },
+    "victory": "all_enemies_defeated"
+  },
+  "hole_centipedes": {
+    "id": "hole_centipedes",
+    "name": "Threshold Hole — Centipedes",
+    "mapId": "map_corridor",
+    "alexaScene": "combat",
+    "scaling": {
+      "1": [{ "monsterId": "giant_centipede", "count": 2 }],
+      "2": [{ "monsterId": "giant_centipede", "count": 2 }],
+      "3": [{ "monsterId": "giant_centipede", "count": 2 }]
+    },
+    "victory": "all_enemies_defeated",
+    "notes": "Oneshot: after 2nd seal."
+  },
+  "lab_infernal_spider": {
+    "id": "lab_infernal_spider",
+    "name": "Infernal Spider",
+    "mapId": "map_lab",
+    "alexaScene": "boss",
+    "scaling": {
+      "1": [{ "monsterId": "infernal_spider", "count": 1, "hpOverride": 32 }],
+      "2": [{ "monsterId": "infernal_spider", "count": 1, "hpOverride": 40 }],
+      "3": [{ "monsterId": "infernal_spider", "count": 1, "hpOverride": 48 }]
+    },
+    "victory": "all_enemies_defeated"
+  },
+  "corridor_magma_rat": {
+    "id": "corridor_magma_rat",
+    "name": "Magma Rat Ambush",
+    "mapId": "map_corridor",
+    "alexaScene": "combat",
+    "scaling": {
+      "1": [{ "monsterId": "magma_rat", "count": 1, "hpOverride": 24 }],
+      "2": [{ "monsterId": "magma_rat", "count": 1, "hpOverride": 32 }],
+      "3": [{ "monsterId": "magma_rat", "count": 1, "hpOverride": 40 }]
+    },
+    "victory": "all_enemies_defeated"
+  }
+}

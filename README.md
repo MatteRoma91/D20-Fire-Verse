@@ -21,8 +21,8 @@ Full notes: [`docs/LOCAL_DEV.md`](docs/LOCAL_DEV.md) · Ship: [`docs/SHIP_CHECKL
 
 Downloadable captures of the running table:
 
-- [Title, story, move, longsword dice](docs/videos/potent_brew_story_move_and_longsword_dice.mp4) (42s, 9.7 MB)
-- [Sable Voss — SRD 5.1 character creation](docs/videos/sable_voss_srd_character_creation.mp4) (29s, 1.6 MB)
+- [Title, story, move, longsword dice](docs/videos/potent_brew_story_move_and_longsword_dice.mp4)
+- [Sable Voss — SRD 5.1 character creation](docs/videos/sable_voss_srd_character_creation.mp4)
 
 ## Monorepo
 

@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>D20 FireVerse — Local</title>
+  <style>
+    :root {
+      --bg: #1a1410;
+      --panel: #2a2118;
+      --ink: #f3e6d0;
+      --muted: #b8a48a;
+      --accent: #c45c26;
+      --ok: #6a9f5a;
+      --reach: rgba(80, 160, 220, 0.35);
+      --pc: #4a8fd4;
+      --enemy: #c44;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Palatino Linotype", Palatino, Georgia, serif;
+      background: radial-gradient(ellipse at top, #3a2a1c 0%, transparent 55%),
+        linear-gradient(180deg, #1a1410, #0e0b08);
+      color: var(--ink);
+    }
+    main { max-width: 1100px; margin: 0 auto; padding: 1rem 1.25rem 2rem; }
+    h1 { font-size: clamp(1.6rem, 4vw, 2.4rem); margin: 0 0 0.2rem; letter-spacing: 0.04em; }
+    .sub { color: var(--muted); margin-bottom: 1rem; }
+    .row { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-bottom: 0.75rem; align-items: center; }
+    button, select, input {
+      font: inherit; padding: 0.55rem 0.9rem; border-radius: 6px;
+      border: 1px solid #5a4634; background: var(--panel); color: var(--ink);
+    }
+    button {
+      cursor: pointer;
+      background: linear-gradient(180deg, #8a4a28, #5c2e16);
+      border-color: #a86a3a;
+    }
+    button:focus { outline: 2px solid #f0c090; outline-offset: 2px; }
+    button.secondary { background: var(--panel); }
+    button:disabled { opacity: 0.45; cursor: not-allowed; }
+    .panel {
+      background: color-mix(in srgb, var(--panel) 88%, black);
+      border: 1px solid #4a3828; border-radius: 10px; padding: 1rem; margin-bottom: 0.85rem;
+    }
+    .narration { font-size: 1.15rem; line-height: 1.5; min-height: 3rem; }
+    .meta { color: var(--muted); font-size: 0.92rem; }
+    .choices { display: grid; gap: 0.5rem; }
+    .choices button { text-align: left; background: #3a2c20; }
+    .status { color: var(--ok); font-size: 0.9rem; }
+    .err { color: #e08070; min-height: 1.2em; }
+    .dice { margin-top: 0.5rem; padding: 0.6rem; border-left: 3px solid var(--accent); background: #221810; }
+    .pregens label {
+      display: flex; gap: 0.55rem; padding: 0.45rem; border: 1px solid #4a3828; border-radius: 6px; margin-bottom: 0.4rem;
+    }
+    .combat-wrap { display: grid; grid-template-columns: 1fr 260px; gap: 0.75rem; }
+    @media (max-width: 800px) { .combat-wrap { grid-template-columns: 1fr; } }
+    canvas {
+      width: 100%; height: auto; image-rendering: pixelated;
+      background: #15100c; border: 1px solid #5a4634; border-radius: 8px; cursor: crosshair;
+    }
+    .log {
+      font-family: ui-monospace, monospace; font-size: 0.78rem; color: var(--muted);
+      max-height: 280px; overflow: auto; white-space: pre-wrap;
+    }
+    .hud-actions { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.5rem; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>D20 FireVerse</h1>
+    <p class="sub">Local mode — story + <strong>grid combat</strong> (no AWS).</p>
+    <p id="conn" class="status">Connecting…</p>
+
+    <section class="panel" id="lobby">
+      <div class="row">
+        <button type="button" id="btnCreate">Create room</button>
+        <input id="joinCode" placeholder="Room code" maxlength="6" style="text-transform:uppercase;width:7.5rem" />
+        <input id="displayName" placeholder="Your name" style="width:9rem" />
+      </div>
+      <div class="pregens" id="pregens"></div>
+      <div class="row">
+        <button type="button" class="secondary" id="btnJoin">Join with selected pregen</button>
+      </div>
+    </section>
+
+    <section class="panel" id="game" hidden>
+      <div class="meta" id="roomMeta"></div>
+      <div class="narration" id="narration"></div>
+      <div id="dice" class="dice" hidden></div>
+      <div class="choices" id="choices"></div>
+
+      <div id="combatPanel" hidden>
+        <div class="combat-wrap">
+          <div>
+            <canvas id="grid" width="720" height="480" tabindex="0"></canvas>
+            <p class="meta" id="combatHint">Arrows move cursor · Enter select destination or confirm attack · Esc cancel</p>
+            <div class="hud-actions" id="combatBtns"></div>
+          </div>
+          <div>
+            <div class="meta" id="turnMeta"></div>
+            <div class="log" id="combatLog"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+    <p id="err" class="err"></p>
+  </main>
+  <script>
+    const proto = location.protocol === "https:" ? "wss" : "ws";
+    const ws = new WebSocket(`${proto}://${location.host}/ws`);
+    let pregens = [];
+    let selected = null;
+    let state = null;
+    let playerId = null;
+    let cursor = { x: 1, y: 1 };
+    let mode = "move"; // move | attack
+    let selectedAbility = null;
+    let selectedTarget = null;
+
+    const $ = (id) => document.getElementById(id);
+    const err = (m) => { $("err").textContent = m || ""; };
+
+    ws.addEventListener("open", () => { $("conn").textContent = "Connected (local)"; });
+    ws.addEventListener("close", () => { $("conn").textContent = "Disconnected"; });
+    ws.addEventListener("message", (ev) => {
+      const msg = JSON.parse(ev.data);
+      if (msg.eventType === "HELLO") {
+        pregens = msg.payload.pregens || [];
+        renderPregens();
+      }
+      if (msg.eventType === "ROOM_STATE") {
+        state = msg.payload;
+        if (state.localPlayerId) playerId = state.localPlayerId;
+        renderGame();
+      }
+      if (msg.eventType === "ERROR") err(msg.payload?.code || "Error");
+    });
+
+    function send(obj) { ws.send(JSON.stringify(obj)); }
+
+    function renderPregens() {
+      $("pregens").innerHTML = pregens.map((p, i) => `
+        <label>
+          <input type="radio" name="pregen" value="${p.id}" ${i === 0 ? "checked" : ""} />
+          <span><strong>${p.name}</strong> — ${p.class} ${p.level}<br/><span class="meta">${p.summary}</span></span>
+        </label>`).join("");
+      selected = pregens[0]?.id;
+      $("pregens").onchange = (e) => {
+        if (e.target.name === "pregen") selected = e.target.value;
+      };
+    }
+
+    function renderGame() {
+      if (!state) return;
+      $("game").hidden = false;
+      $("roomMeta").textContent =
+        `Room ${state.roomCode} · ${state.nodeId} (${state.nodeType})` +
+        (state.players?.length
+          ? ` · ${state.players.map((p) => p.characterName).join(", ")}`
+          : " · waiting for join");
+      $("narration").textContent = state.narration || "";
+      if (state.lastDice) {
+        $("dice").hidden = false;
+        $("dice").textContent =
+          `${state.lastDice.roller}: ${state.lastDice.notation} → [${state.lastDice.values.join(", ")}] = ${state.lastDice.total}`;
+      } else $("dice").hidden = true;
+
+      const box = $("choices");
+      box.innerHTML = "";
+      $("combatPanel").hidden = true;
+
+      if (!state.players?.length) {
+        box.innerHTML = "<p class='meta'>Create/join and pick a pregen.</p>";
+        return;
+      }
+
+      if (state.combat) {
+        $("combatPanel").hidden = false;
+        drawCombat();
+        return;
+      }
+
+      if (state.nodeType === "skill_check") {
+        const c = state.skillCheck;
+        const b = document.createElement("button");
+        b.textContent = `Attempt ${c.skill || c.ability} (DC ${c.dc})`;
+        b.onclick = () => send({ action: "CHOOSE", roomCode: state.roomCode, choiceId: "attempt" });
+        box.appendChild(b);
+        return;
+      }
+      if (state.nodeId === "END_SAVE" || state.nodeId === "END_WIN") {
+        box.innerHTML = "<p class='meta'>End of slice.</p>";
+        return;
+      }
+      for (const ch of state.choices || []) {
+        const b = document.createElement("button");
+        b.textContent = ch.label;
+        b.onclick = () => send({ action: "CHOOSE", roomCode: state.roomCode, choiceId: ch.id });
+        box.appendChild(b);
+      }
+    }
+
+    function myToken() {
+      return state.combat?.tokens?.find((t) => t.playerId === playerId);
+    }
+
+    function isMyTurn() {
+      const c = state.combat;
+      if (!c) return false;
+      const cur = c.tokens.find((t) => t.id === c.currentTokenId);
+      return cur && cur.playerId === playerId;
+    }
+
+    function enemyAt(x, y) {
+      return state.combat?.tokens?.find(
+        (t) => !t.dead && t.kind === "enemy" && t.x === x && t.y === y,
+      );
+    }
+
+    function chebyshev(ax, ay, bx, by) {
+      return Math.max(Math.abs(ax - bx), Math.abs(ay - by));
+    }
+
+    function defaultAttackId() {
+      const acts = (state.combat?.actions || []).filter(
+        (a) => a.actionType === "action",
+      );
+      return acts[0]?.id || selectedAbility;
+    }
+
+    function tryAttack(enemy) {
+      const me = myToken();
+      if (!me) return;
+      if (!me.hasAction) {
+        err("Action already used this turn — click End Turn, then attack again next turn.");
+        return;
+      }
+      const abilityId = selectedAbility || defaultAttackId();
+      if (!abilityId) {
+        err("No attack available");
+        return;
+      }
+      // melee default range 1 (server validates exact ability range)
+      if (chebyshev(me.x, me.y, enemy.x, enemy.y) > 6) {
+        err("Target too far — move closer first");
+        return;
+      }
+      send({
+        action: "PERFORM_ACTION",
+        roomCode: state.roomCode,
+        playerId,
+        abilityId,
+        targetId: enemy.id,
+      });
+      mode = "move";
+      selectedAbility = null;
+    }
+
+    function drawCombat() {
+      const c = state.combat;
+      const canvas = $("grid");
+      const ctx = canvas.getContext("2d");
+      const cols = c.width;
+      const rows = c.height;
+      const cell = Math.min(Math.floor(700 / cols), Math.floor(460 / rows));
+      canvas.width = cols * cell;
+      canvas.height = rows * cell;
+      const me = myToken();
+
+      for (let y = 0; y < rows; y++) {
+        for (let x = 0; x < cols; x++) {
+          ctx.fillStyle = c.walls[y][x] ? "#2a2220" : ((x + y) % 2 ? "#1e1814" : "#241c16");
+          ctx.fillRect(x * cell, y * cell, cell, cell);
+          ctx.strokeStyle = "#3a3028";
+          ctx.strokeRect(x * cell, y * cell, cell, cell);
+        }
+      }
+
+      if (isMyTurn() && mode === "move") {
+        for (const r of c.reachable || []) {
+          ctx.fillStyle = "rgba(80,160,220,0.35)";
+          ctx.fillRect(r.x * cell, r.y * cell, cell, cell);
+        }
+      }
+
+      // in-range enemies when attacking or when action available
+      if (isMyTurn() && me?.hasAction) {
+        for (const t of c.tokens) {
+          if (t.dead || t.kind !== "enemy") continue;
+          if (chebyshev(me.x, me.y, t.x, t.y) <= 1) {
+            ctx.fillStyle = "rgba(220, 80, 60, 0.25)";
+            ctx.fillRect(t.x * cell, t.y * cell, cell, cell);
+          }
+        }
+      }
+
+      for (const t of c.tokens) {
+        if (t.dead) continue;
+        const cx = t.x * cell + cell / 2;
+        const cy = t.y * cell + cell / 2;
+        ctx.beginPath();
+        ctx.arc(cx, cy, cell * 0.35, 0, Math.PI * 2);
+        ctx.fillStyle = t.kind === "pc" ? "#4a8fd4" : "#c44";
+        if (selectedTarget === t.id) ctx.fillStyle = "#e8c040";
+        ctx.fill();
+        ctx.fillStyle = "#fff";
+        ctx.font = `${Math.max(10, cell * 0.28)}px sans-serif`;
+        ctx.textAlign = "center";
+        ctx.fillText(t.name.split(" ")[0].slice(0, 4), cx, cy + 4);
+        ctx.fillStyle = "#9f9";
+        ctx.font = `${Math.max(9, cell * 0.22)}px sans-serif`;
+        ctx.fillText(`${t.hp}/${t.maxHp}`, cx, cy + cell * 0.42);
+      }
+
+      ctx.strokeStyle = "#f0c090";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(cursor.x * cell + 2, cursor.y * cell + 2, cell - 4, cell - 4);
+
+      const actionLeft = me?.hasAction;
+      $("turnMeta").textContent = `Turn: ${c.currentName} · ${c.status}` +
+        (isMyTurn()
+          ? ` · move left ${me?.movementLeft ?? 0} · action ${actionLeft ? "READY" : "USED"}`
+          : " · wait…");
+      $("combatLog").textContent = (c.log || []).join("\n");
+
+      if (!isMyTurn()) {
+        $("combatHint").textContent = "Not your turn (enemies acting or other player).";
+      } else if (!actionLeft) {
+        $("combatHint").textContent =
+          "You already attacked this turn. You may still move, then click End Turn to let enemies act — next turn you can attack again.";
+      } else if (mode === "attack") {
+        $("combatHint").textContent =
+          "Click a highlighted (adjacent) enemy to strike. Esc cancels.";
+      } else {
+        $("combatHint").textContent =
+          "Blue = move. Red tint = enemy in melee range (click them to attack). Or pick Longsword then click enemy.";
+      }
+
+      const btns = $("combatBtns");
+      btns.innerHTML = "";
+      if (!isMyTurn()) {
+        btns.innerHTML = "<span class='meta'>Waiting for turn…</span>";
+        return;
+      }
+      for (const a of c.actions || []) {
+        if (a.actionType !== "action") continue;
+        const b = document.createElement("button");
+        b.textContent = a.name;
+        b.disabled = !actionLeft;
+        b.onclick = () => {
+          if (!myToken()?.hasAction) {
+            err("Action already used — End Turn first.");
+            return;
+          }
+          mode = "attack";
+          selectedAbility = a.id;
+          err(`Click an adjacent enemy to use ${a.name}`);
+          drawCombat();
+        };
+        btns.appendChild(b);
+      }
+      const end = document.createElement("button");
+      end.textContent = actionLeft ? "End Turn" : "End Turn (required)";
+      end.style.outline = actionLeft ? "" : "2px solid #e8c040";
+      end.onclick = () => {
+        mode = "move";
+        selectedAbility = null;
+        err();
+        send({ action: "END_TURN", roomCode: state.roomCode, playerId });
+      };
+      btns.appendChild(end);
+    }
+
+    function clampCursor() {
+      const c = state?.combat;
+      if (!c) return;
+      cursor.x = Math.max(0, Math.min(c.width - 1, cursor.x));
+      cursor.y = Math.max(0, Math.min(c.height - 1, cursor.y));
+    }
+
+    function handleCellConfirm() {
+      if (!isMyTurn()) return;
+      const enemy = enemyAt(cursor.x, cursor.y);
+      if (enemy) {
+        tryAttack(enemy);
+        return;
+      }
+      if (mode === "attack") {
+        err("No living enemy on this cell");
+        return;
+      }
+      // move only onto empty reachable cells
+      const reachable = state.combat.reachable || [];
+      if (!reachable.some((c) => c.x === cursor.x && c.y === cursor.y)) {
+        err("Can't move there (not reachable / occupied)");
+        return;
+      }
+      send({ action: "PROPOSE_MOVE", roomCode: state.roomCode, playerId, x: cursor.x, y: cursor.y });
+    }
+
+    window.addEventListener("keydown", (e) => {
+      if (!state?.combat || $("combatPanel").hidden) return;
+      const map = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
+      if (map[e.key]) {
+        e.preventDefault();
+        cursor.x += map[e.key][0];
+        cursor.y += map[e.key][1];
+        clampCursor();
+        drawCombat();
+      } else if (e.key === "Escape") {
+        mode = "move";
+        selectedAbility = null;
+        selectedTarget = null;
+        err();
+        drawCombat();
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        handleCellConfirm();
+      }
+    });
+
+    $("grid")?.addEventListener("click", (ev) => {
+      if (!state?.combat) return;
+      const canvas = $("grid");
+      const rect = canvas.getBoundingClientRect();
+      const cellW = canvas.width / state.combat.width;
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      cursor = {
+        x: Math.floor(((ev.clientX - rect.left) * scaleX) / cellW),
+        y: Math.floor(((ev.clientY - rect.top) * scaleY) / cellW),
+      };
+      clampCursor();
+      handleCellConfirm();
+    });
+
+    $("btnCreate").onclick = () => { err(); send({ action: "CREATE_ROOM" }); };
+    $("btnJoin").onclick = () => {
+      err();
+      const roomCode = ($("joinCode").value || state?.roomCode || "").toUpperCase();
+      if (!roomCode) return err("Need room code");
+      if (!selected) return err("Pick a pregen");
+      send({
+        action: "JOIN_ROOM",
+        roomCode,
+        displayName: $("displayName").value || "Player",
+        characterId: selected,
+      });
+      $("joinCode").value = roomCode;
+    };
+  </script>
+</body>
+</html>

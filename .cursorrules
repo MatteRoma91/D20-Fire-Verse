@@ -1,0 +1,91 @@
+# CURSOR RULES: D20 FireVerse
+
+## LANGUAGE
+1. Developer communication: **Italian**.
+2. All code, comments, identifiers, JSON schemas, logs, README, and repo docs: **English**.
+3. All in-game UI, campaign text, Polly narration, voice phrases, and companion labels: **English**.
+
+## PRODUCT
+- **Name (UI):** D20 FireVerse
+- **Repo:** D20-Fire-Verse
+- **Event:** Amazon Developer Hackathon 2026 — Fire TV track. Deadline **2026-10-23 12:00 PT**.
+- **Pitch:** The TV is the table. Friends in different homes join one room. No human GM. Authored story + server-authoritative d20 combat. Multi-modal: voice + D-pad + screen in one flow.
+- **North star:** Fire TV Stick + Alexa as one fully immersive table (screen, remote, voice in/out, lights, Echo). Canonical write-up: `docs/NORTH_STAR.md`. Hackathon v1 scope stays in `docs/PRODUCT_DECISIONS.md`.
+
+## HACKATHON (BINDING)
+- Run on Fire OS **or** Vega OS; simulator OK
+- Demo video **< 3 min**; show real/simulator Fire TV; no copyrighted music / third-party trademarks
+- Public MIT repo with all source, assets, setup instructions
+- Judging: Tech, Design, Impact, Idea (equal). "Remote-controlled game" = obvious. "Voice + D-pad + visual in one flow" = creative
+- Friction log → up to **+10%** (`docs/FRICTION_LOG.md`)
+- Prefer **Open Source** mini-challenge over chasing Bedrock for AWS Builder
+- Request $150 AWS credits by 2026-10-21
+
+## V1 SCOPE (HACKATHON DELIVERABLE — DO NOT EXPAND)
+Accepted expert cut. Post-hackathon may widen; **v1 must ship this**:
+
+### In
+- ~**20 minute** original one-shot (write yourselves; no unlicensed modules)
+- **4 pregenerated** characters (rename only; no full character creation)
+- **2 scripted combats** + a few story beats / skill checks
+- **~10–20 abilities** hand-authored on the typed-effect schema (only what those PCs/monsters use)
+- Online room **1–3** players + solo; room **join code** (no Cognito / no user accounts in v1)
+- Server-authoritative dice, movement, actions, votes
+- Grid combat: pick **destination cell** → server pathfinds (diagonal **5/10/5** costs) → preview → confirm
+- Story resolution: relevant ability score **proposes** when needed; contested outcome resolved by **skill check / d20**, not “highest d20 owns the plot”
+- Polly (build-time cache by text hash) + **mandatory subtitles**
+- Guided mode: highlight recommended action for newcomers
+- Disconnect: PC **Dodges** and skips turn; not removed; not AI-controlled
+- Death/TPK: Reload save or End run
+- Save/resume mid-adventure (cliffhanger OK)
+- Companion: character sheet + **microphone** for short voice commands → Amazon Transcribe → rigid intent parser (no LLM)
+- Alexa lights: **demo trick only** if week-1 spike passes (virtual switch + routine on *our* account). Not a product promise. Game fully playable without it
+
+### Out of v1
+- Full SRD catalog implementation / classes to level 20
+- Full character creation (point buy, spell lists UI, inventory UI as systems)
+- Map editor, shops, systemic loot, general level-up framework (one scripted mid-adventure bump OK if time)
+- Cognito / admin user accounts
+- Free-form in-app STT on Vega remote mic
+- Controlling the end-user’s whole Alexa home as a shipping feature
+- Dual Appstore publication as a delivery requirement (simulator + one package path is enough)
+- Bedrock / AI GM
+
+## ARCHITECTURE (KEEP)
+- TV: TypeScript + Vite + Phaser **or** PixiJS (spike); Vega WebView + Fire OS WebView
+- Shared TS monorepo: `packages/rules`, `packages/protocol`, `packages/content-schema`
+- Backend: API Gateway WebSocket + Lambda TS + DynamoDB + S3 + Polly (+ Transcribe for companion voice)
+- Authoritative server; clients send intents only
+- Optimistic locking on room version in DynamoDB; **WebSocket keepalive/ping** (idle timeout ~10 min)
+- No Lambda in VPC (NAT burns credits)
+- Room state small: SRD/effect ids, not prose blobs (400 KB item limit)
+- Legal: MIT code; SRD subset **transcribed from official SRD PDF** under CC-BY with exact Wizards attribution; do **not** vendor 5e-database wholesale (OGL/license mix risk). Forbidden: “D&D”, “Dungeon Master”, non-SRD monsters. “5E compatible” OK
+
+## TYPED RULES ENGINE
+- Keep the **effect schema** architecture (attack, save, damage, heal, condition, move, etc.)
+- Populate it with **only** abilities used in the one-shot
+- Enemy turns: simple scripted/heuristic AI for the two encounters
+- Movement rules use diagonal costs; D-pad UX is destination-select, not cell-by-cell tracing
+
+## WEEK 1 SPIKES (BINARY GO/NO-GO)
+1. Renderer + **window-level** D-pad/focus (canvas has no DOM focus) — 30 FPS grid target
+2. Companion mic → Transcribe → intent → TV (stop criterion: structured intent reaches game state)
+3. Alexa demo path (virtual switch + routine) — fail = ship without lights
+Outcomes in `docs/SPIKES.md` + friction log.
+
+## BUILD ORDER (INVERTED — VIDEO LOOP FIRST)
+1. Spikes (renderer, D-pad, voice, Alexa demo)
+2. Room + 2 clients + story node + vote/skill resolution + 1 combat (move, attack, 1 spell, enemy turn) + dice anim + Polly + save/resume
+3. Second combat + guided mode + companion sheet/mic + optional lights scene + video + friction log
+4. Freeze: cut, don’t add (after ~2026-10-21 video is recordable)
+
+## CODE RULES
+1. TypeScript strict; AWS SDK v3 modular
+2. Rules only in `packages/rules` — never reimplemented in clients
+3. No secrets in git
+4. English player-facing strings
+5. Prefer vertical slice over catalog completeness
+6. Document AWS usage for Open Source / Builder honestly (Transcribe + Polly + WS stack)
+
+## NON-GOALS POST-V1 (ALLOWED LATER, NOT NOW)
+Full SRD data pack, character creation, map editor, Amazon login, Appstore dual publish, longer campaigns.

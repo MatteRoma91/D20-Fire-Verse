@@ -1,0 +1,75 @@
+@import url("https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Literata:opsz,wght@7..72,400;7..72,600&display=swap");
+
+:root {
+  --ink: #f4e8d4;
+  --mute: #b8a48a;
+  --line: rgba(244, 232, 212, 0.16);
+  --copper: #c45c26;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: "Literata", Georgia, serif;
+  color: var(--ink);
+  background:
+    radial-gradient(circle at top, rgba(196, 92, 38, 0.28), transparent 46%),
+    #120e0b;
+  padding: 1rem 1rem 2rem;
+}
+body[data-room="explore"] { background: radial-gradient(circle at top, rgba(80, 120, 160, 0.35), transparent 46%), #0e1014; }
+body[data-room="combat"],
+body[data-room="boss"] { background: radial-gradient(circle at top, rgba(180, 30, 20, 0.4), transparent 48%), #140806; }
+body[data-room="victory"] { background: radial-gradient(circle at top, rgba(232, 192, 64, 0.28), transparent 46%), #141006; }
+
+.mast { margin-bottom: 0.8rem; }
+.kicker {
+  margin: 0;
+  font-family: Cinzel, serif;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-size: 0.72rem;
+  color: #e8924a;
+}
+h1 { font-family: Cinzel, serif; font-size: 2rem; margin: 0.15rem 0; }
+h2 { font-family: Cinzel, serif; font-size: 1rem; margin: 0 0 0.35rem; }
+.panel {
+  background: rgba(18, 12, 9, 0.78);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 0.9rem;
+  margin-bottom: 0.75rem;
+}
+label { display: grid; gap: 0.25rem; font-size: 0.85rem; color: var(--mute); margin-bottom: 0.45rem; }
+button, input {
+  font: inherit;
+  padding: 0.75rem 0.85rem;
+  border-radius: 10px;
+  border: 1px solid #5a4634;
+  background: #2a2118;
+  color: inherit;
+  width: 100%;
+}
+button.primary { background: linear-gradient(180deg, #a85a30, #6a3218); border-color: #c47a48; }
+.meta { color: var(--mute); font-size: 0.9rem; }
+.err { color: #e08070; min-height: 1.2em; }
+.grid { display: grid; gap: 0.45rem; grid-template-columns: 1fr 1fr; margin-top: 0.65rem; }
+.who { display: flex; gap: 0.7rem; align-items: center; }
+.mark {
+  width: 42px; height: 42px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: #3a2a1c; border: 1px solid #e8c040;
+  font-family: Cinzel, serif;
+}
+.hp {
+  margin: 0.65rem 0 0.3rem;
+  height: 8px;
+  border-radius: 99px;
+  background: #1a100c;
+  overflow: hidden;
+}
+.hp span { display: block; height: 100%; background: linear-gradient(90deg, #6a9f5a, #e8c040); }
+.narr { line-height: 1.45; }
+.choices { margin: 0.4rem 0 0; padding-left: 1.1rem; }
+button:focus-visible, input:focus-visible { outline: 3px solid #f0c090; outline-offset: 2px; }

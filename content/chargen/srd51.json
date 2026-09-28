@@ -1,0 +1,593 @@
+{
+  "source": "SRD 5.1 (CC-BY 4.0) — subset for levels 1–3",
+  "proficiencyByLevel": { "1": 2, "2": 2, "3": 2 },
+  "standardArray": [15, 14, 13, 12, 10, 8],
+  "pointBuy": {
+    "budget": 27,
+    "min": 8,
+    "max": 15,
+    "costs": { "8": 0, "9": 1, "10": 2, "11": 3, "12": 4, "13": 5, "14": 7, "15": 9 }
+  },
+  "abilities": ["str", "dex", "con", "int", "wis", "cha"],
+  "skills": {
+    "acrobatics": { "ability": "dex", "label": "Acrobatics" },
+    "animal_handling": { "ability": "wis", "label": "Animal Handling" },
+    "arcana": { "ability": "int", "label": "Arcana" },
+    "athletics": { "ability": "str", "label": "Athletics" },
+    "deception": { "ability": "cha", "label": "Deception" },
+    "history": { "ability": "int", "label": "History" },
+    "insight": { "ability": "wis", "label": "Insight" },
+    "intimidation": { "ability": "cha", "label": "Intimidation" },
+    "investigation": { "ability": "int", "label": "Investigation" },
+    "medicine": { "ability": "wis", "label": "Medicine" },
+    "nature": { "ability": "int", "label": "Nature" },
+    "perception": { "ability": "wis", "label": "Perception" },
+    "performance": { "ability": "cha", "label": "Performance" },
+    "persuasion": { "ability": "cha", "label": "Persuasion" },
+    "religion": { "ability": "int", "label": "Religion" },
+    "sleight_of_hand": { "ability": "dex", "label": "Sleight of Hand" },
+    "stealth": { "ability": "dex", "label": "Stealth" },
+    "survival": { "ability": "wis", "label": "Survival" }
+  },
+  "armor": {
+    "none": { "base": 10, "dex": "full", "label": "Unarmored" },
+    "leather": { "base": 11, "dex": "full", "label": "Leather" },
+    "studded_leather": { "base": 12, "dex": "full", "label": "Studded Leather" },
+    "hide": { "base": 12, "dex": "max2", "label": "Hide" },
+    "chain_shirt": { "base": 13, "dex": "max2", "label": "Chain Shirt" },
+    "scale_mail": { "base": 14, "dex": "max2", "label": "Scale Mail", "stealthDisadvantage": true },
+    "chain_mail": { "base": 16, "dex": "none", "label": "Chain Mail", "strReq": 13, "stealthDisadvantage": true },
+    "shield": { "acBonus": 2, "label": "Shield" }
+  },
+  "weapons": {
+    "club": { "abilityId": "club_attack", "ability": "str", "damage": "1d4", "type": "bludgeoning" },
+    "dagger": { "abilityId": "dagger_attack", "ability": "dex", "damage": "1d4", "type": "piercing", "finesse": true },
+    "handaxe": { "abilityId": "handaxe_attack", "ability": "str", "damage": "1d6", "type": "slashing", "thrown": true },
+    "javelin": { "abilityId": "javelin_attack", "ability": "str", "damage": "1d6", "type": "piercing", "thrown": true },
+    "light_crossbow": { "abilityId": "light_crossbow_attack", "ability": "dex", "damage": "1d8", "type": "piercing", "ranged": true },
+    "longsword": { "abilityId": "longsword_attack", "ability": "str", "damage": "1d8", "type": "slashing" },
+    "mace": { "abilityId": "mace_attack", "ability": "str", "damage": "1d6", "type": "bludgeoning" },
+    "quarterstaff": { "abilityId": "quarterstaff_attack", "ability": "str", "damage": "1d6", "type": "bludgeoning" },
+    "scimitar": { "abilityId": "scimitar_attack", "ability": "dex", "damage": "1d6", "type": "slashing", "finesse": true },
+    "shortbow": { "abilityId": "shortbow_attack", "ability": "dex", "damage": "1d6", "type": "piercing", "ranged": true },
+    "shortsword": { "abilityId": "shortsword_attack", "ability": "dex", "damage": "1d6", "type": "piercing", "finesse": true },
+    "spear": { "abilityId": "spear_attack", "ability": "str", "damage": "1d6", "type": "piercing" },
+    "greataxe": { "abilityId": "greataxe_attack", "ability": "str", "damage": "1d12", "type": "slashing", "twoHanded": true },
+    "unarmed": { "abilityId": "unarmed_strike", "ability": "str", "damage": "1d4", "type": "bludgeoning" }
+  },
+  "races": {
+    "human": {
+      "label": "Human",
+      "speedCells": 6,
+      "abilityBonuses": { "str": 1, "dex": 1, "con": 1, "int": 1, "wis": 1, "cha": 1 },
+      "traits": ["human_versatility"],
+      "size": "medium"
+    },
+    "hill_dwarf": {
+      "label": "Hill Dwarf",
+      "speedCells": 5,
+      "abilityBonuses": { "con": 2, "wis": 1 },
+      "traits": ["darkvision", "dwarven_resilience", "dwarven_toughness"],
+      "hpBonusPerLevel": 1,
+      "size": "medium"
+    },
+    "mountain_dwarf": {
+      "label": "Mountain Dwarf",
+      "speedCells": 5,
+      "abilityBonuses": { "str": 2, "con": 2 },
+      "traits": ["darkvision", "dwarven_resilience", "dwarven_armor_training"],
+      "size": "medium"
+    },
+    "high_elf": {
+      "label": "High Elf",
+      "speedCells": 6,
+      "abilityBonuses": { "dex": 2, "int": 1 },
+      "traits": ["darkvision", "fey_ancestry", "trance", "elf_weapon_training", "cantrip"],
+      "size": "medium",
+      "extraCantrip": true
+    },
+    "wood_elf": {
+      "label": "Wood Elf",
+      "speedCells": 7,
+      "abilityBonuses": { "dex": 2, "wis": 1 },
+      "traits": ["darkvision", "fey_ancestry", "trance", "mask_of_the_wild"],
+      "size": "medium"
+    },
+    "lightfoot_halfling": {
+      "label": "Lightfoot Halfling",
+      "speedCells": 5,
+      "abilityBonuses": { "dex": 2, "cha": 1 },
+      "traits": ["lucky", "brave", "halfling_nimbleness", "naturally_stealthy"],
+      "size": "small"
+    },
+    "stout_halfling": {
+      "label": "Stout Halfling",
+      "speedCells": 5,
+      "abilityBonuses": { "dex": 2, "con": 1 },
+      "traits": ["lucky", "brave", "halfling_nimbleness", "stout_resilience"],
+      "size": "small"
+    },
+    "dragonborn": {
+      "label": "Dragonborn",
+      "speedCells": 6,
+      "abilityBonuses": { "str": 2, "cha": 1 },
+      "traits": ["draconic_ancestry", "breath_weapon", "damage_resistance"],
+      "size": "medium"
+    },
+    "rock_gnome": {
+      "label": "Rock Gnome",
+      "speedCells": 5,
+      "abilityBonuses": { "int": 2, "con": 1 },
+      "traits": ["darkvision", "gnome_cunning", "artificers_lore", "tinker"],
+      "size": "small"
+    },
+    "half_elf": {
+      "label": "Half-Elf",
+      "speedCells": 6,
+      "abilityBonuses": { "cha": 2 },
+      "flexibleBonuses": 2,
+      "traits": ["darkvision", "fey_ancestry", "skill_versatility"],
+      "extraSkills": 2,
+      "size": "medium"
+    },
+    "half_orc": {
+      "label": "Half-Orc",
+      "speedCells": 6,
+      "abilityBonuses": { "str": 2, "con": 1 },
+      "traits": ["darkvision", "menacing", "relentless_endurance", "savage_attacks"],
+      "size": "medium"
+    },
+    "tiefling": {
+      "label": "Tiefling",
+      "speedCells": 6,
+      "abilityBonuses": { "int": 1, "cha": 2 },
+      "traits": ["darkvision", "hellish_resistance", "infernal_legacy"],
+      "size": "medium"
+    }
+  },
+  "backgrounds": {
+    "acolyte": {
+      "label": "Acolyte",
+      "skills": ["insight", "religion"],
+      "languages": 2,
+      "equipment": ["holy_symbol", "prayer_book"]
+    },
+    "criminal": {
+      "label": "Criminal",
+      "skills": ["deception", "stealth"],
+      "tool": "thieves_tools",
+      "equipment": ["crowbar", "dark_clothes"]
+    },
+    "folk_hero": {
+      "label": "Folk Hero",
+      "skills": ["animal_handling", "survival"],
+      "equipment": ["artisans_tools", "shovel"]
+    },
+    "noble": {
+      "label": "Noble",
+      "skills": ["history", "persuasion"],
+      "equipment": ["fine_clothes", "signet_ring"]
+    },
+    "sage": {
+      "label": "Sage",
+      "skills": ["arcana", "history"],
+      "languages": 2,
+      "equipment": ["ink", "letter"]
+    },
+    "soldier": {
+      "label": "Soldier",
+      "skills": ["athletics", "intimidation"],
+      "equipment": ["insignia", "gaming_set"]
+    },
+    "charlatan": {
+      "label": "Charlatan",
+      "skills": ["deception", "sleight_of_hand"],
+      "equipment": ["fine_clothes", "disguise_kit"]
+    },
+    "hermit": {
+      "label": "Hermit",
+      "skills": ["medicine", "religion"],
+      "equipment": ["herbalism_kit", "scroll"]
+    }
+  },
+  "fightingStyles": {
+    "archery": { "label": "Archery", "desc": "+2 to ranged attack rolls" },
+    "defense": { "label": "Defense", "desc": "+1 AC while wearing armor" },
+    "dueling": { "label": "Dueling", "desc": "+2 damage with one-handed weapon, no other weapon" },
+    "great_weapon": { "label": "Great Weapon Fighting", "desc": "Reroll 1s/2s on two-handed weapon damage" },
+    "protection": { "label": "Protection", "desc": "Impose disadvantage with shield reaction" },
+    "two_weapon": { "label": "Two-Weapon Fighting", "desc": "Add ability modifier to off-hand damage" }
+  },
+  "classes": {
+    "barbarian": {
+      "label": "Barbarian",
+      "hitDie": 12,
+      "savingThrows": ["str", "con"],
+      "skillChoices": 2,
+      "skillList": ["animal_handling", "athletics", "intimidation", "nature", "perception", "survival"],
+      "armor": "none",
+      "shield": false,
+      "unarmoredDefense": "barbarian",
+      "primaryWeapons": ["greataxe", "handaxe"],
+      "actionsByLevel": {
+        "1": ["greataxe_attack", "handaxe_attack"],
+        "2": ["greataxe_attack", "handaxe_attack"],
+        "3": ["greataxe_attack", "handaxe_attack"]
+      },
+      "featuresByLevel": {
+        "1": ["rage", "unarmored_defense"],
+        "2": ["reckless_attack", "danger_sense"],
+        "3": ["primal_path"]
+      },
+      "inventory": ["potion_healing", "explorers_pack"]
+    },
+    "bard": {
+      "label": "Bard",
+      "hitDie": 8,
+      "savingThrows": ["dex", "cha"],
+      "skillChoices": 3,
+      "skillList": ["acrobatics", "animal_handling", "arcana", "athletics", "deception", "history", "insight", "intimidation", "investigation", "medicine", "nature", "perception", "performance", "persuasion", "religion", "sleight_of_hand", "stealth", "survival"],
+      "armor": "leather",
+      "shield": false,
+      "spellcasting": "full",
+      "spellAbility": "cha",
+      "cantripsKnown": { "1": 2, "2": 2, "3": 2 },
+      "spellsKnown": { "1": 4, "2": 5, "3": 6 },
+      "spellLists": {
+        "cantrips": ["vicious_mockery", "mage_hand", "light"],
+        "1": ["spell_cure_wounds", "spell_magic_missile", "spell_shield", "spell_detect_magic", "spell_sleep", "spell_heroism"],
+        "2": []
+      },
+      "primaryWeapons": ["dagger", "shortsword"],
+      "actionsByLevel": {
+        "1": ["dagger_attack", "spell_cure_wounds"],
+        "2": ["dagger_attack", "spell_cure_wounds"],
+        "3": ["dagger_attack", "spell_cure_wounds", "spell_magic_missile"]
+      },
+      "featuresByLevel": {
+        "1": ["spellcasting", "bardic_inspiration"],
+        "2": ["jack_of_all_trades", "song_of_rest"],
+        "3": ["bard_college", "expertise"]
+      },
+      "inventory": ["potion_healing", "lute", "diplomats_pack"]
+    },
+    "cleric": {
+      "label": "Cleric",
+      "hitDie": 8,
+      "savingThrows": ["wis", "cha"],
+      "skillChoices": 2,
+      "skillList": ["history", "insight", "medicine", "persuasion", "religion"],
+      "armor": "chain_mail",
+      "shield": true,
+      "spellcasting": "full",
+      "spellAbility": "wis",
+      "cantripsKnown": { "1": 3, "2": 3, "3": 3 },
+      "preparedFormula": "wis+level",
+      "domains": {
+        "life": {
+          "label": "Life Domain",
+          "features": ["disciple_of_life", "channel_divinity_preserve_life"],
+          "bonusSpells": ["spell_cure_wounds", "spell_bless"]
+        }
+      },
+      "spellLists": {
+        "cantrips": ["sacred_flame", "light", "thaumaturgy"],
+        "1": ["spell_cure_wounds", "spell_guiding_bolt", "spell_bless"],
+        "2": ["spell_spiritual_weapon"]
+      },
+      "primaryWeapons": ["mace"],
+      "actionsByLevel": {
+        "1": ["mace_attack", "spell_cure_wounds", "spell_guiding_bolt"],
+        "2": ["mace_attack", "spell_cure_wounds", "spell_guiding_bolt"],
+        "3": ["mace_attack", "spell_cure_wounds", "spell_guiding_bolt"]
+      },
+      "featuresByLevel": {
+        "1": ["spellcasting", "divine_domain"],
+        "2": ["channel_divinity"],
+        "3": ["domain_feature"]
+      },
+      "inventory": ["holy_symbol", "potion_healing", "priests_pack"]
+    },
+    "druid": {
+      "label": "Druid",
+      "hitDie": 8,
+      "savingThrows": ["int", "wis"],
+      "skillChoices": 2,
+      "skillList": ["arcana", "animal_handling", "insight", "medicine", "nature", "perception", "religion", "survival"],
+      "armor": "hide",
+      "shield": true,
+      "spellcasting": "full",
+      "spellAbility": "wis",
+      "cantripsKnown": { "1": 2, "2": 2, "3": 2 },
+      "preparedFormula": "wis+level",
+      "spellLists": {
+        "cantrips": ["druidcraft", "produce_flame"],
+        "1": ["spell_cure_wounds", "spell_entangle"],
+        "2": []
+      },
+      "primaryWeapons": ["scimitar", "quarterstaff"],
+      "actionsByLevel": {
+        "1": ["scimitar_attack", "spell_cure_wounds"],
+        "2": ["scimitar_attack", "spell_cure_wounds"],
+        "3": ["scimitar_attack", "spell_cure_wounds"]
+      },
+      "featuresByLevel": {
+        "1": ["druidic", "spellcasting"],
+        "2": ["wild_shape", "druid_circle"],
+        "3": ["circle_feature"]
+      },
+      "inventory": ["druidic_focus", "potion_healing", "explorers_pack"]
+    },
+    "fighter": {
+      "label": "Fighter",
+      "hitDie": 10,
+      "savingThrows": ["str", "con"],
+      "skillChoices": 2,
+      "skillList": ["acrobatics", "animal_handling", "athletics", "history", "insight", "intimidation", "perception", "survival"],
+      "armor": "chain_mail",
+      "shield": false,
+      "fightingStyleRequired": true,
+      "fightingStyleOptions": ["archery", "defense", "dueling", "great_weapon", "protection", "two_weapon"],
+      "primaryWeapons": ["longsword", "light_crossbow"],
+      "actionsByLevel": {
+        "1": ["longsword_attack", "second_wind"],
+        "2": ["longsword_attack", "second_wind"],
+        "3": ["longsword_attack", "second_wind"]
+      },
+      "featuresByLevel": {
+        "1": ["fighting_style", "second_wind"],
+        "2": ["action_surge"],
+        "3": ["martial_archetype"]
+      },
+      "inventory": ["potion_healing", "dungeoneers_pack"]
+    },
+    "monk": {
+      "label": "Monk",
+      "hitDie": 8,
+      "savingThrows": ["str", "dex"],
+      "skillChoices": 2,
+      "skillList": ["acrobatics", "athletics", "history", "insight", "religion", "stealth"],
+      "armor": "none",
+      "shield": false,
+      "unarmoredDefense": "monk",
+      "primaryWeapons": ["shortsword", "unarmed"],
+      "actionsByLevel": {
+        "1": ["shortsword_attack", "unarmed_strike"],
+        "2": ["shortsword_attack", "unarmed_strike"],
+        "3": ["shortsword_attack", "unarmed_strike"]
+      },
+      "featuresByLevel": {
+        "1": ["unarmored_defense", "martial_arts"],
+        "2": ["ki", "unarmored_movement"],
+        "3": ["monastic_tradition", "deflect_missiles"]
+      },
+      "inventory": ["potion_healing", "explorers_pack"]
+    },
+    "paladin": {
+      "label": "Paladin",
+      "hitDie": 10,
+      "savingThrows": ["wis", "cha"],
+      "skillChoices": 2,
+      "skillList": ["athletics", "insight", "intimidation", "medicine", "persuasion", "religion"],
+      "armor": "chain_mail",
+      "shield": true,
+      "spellcasting": "half",
+      "spellAbility": "cha",
+      "preparedFormula": "cha+halfLevel",
+      "fightingStyleAt": 2,
+      "fightingStyleOptions": ["defense", "dueling", "great_weapon", "protection"],
+      "spellLists": {
+        "cantrips": [],
+        "1": ["spell_cure_wounds", "spell_bless"],
+        "2": []
+      },
+      "primaryWeapons": ["longsword"],
+      "actionsByLevel": {
+        "1": ["longsword_attack"],
+        "2": ["longsword_attack", "spell_cure_wounds"],
+        "3": ["longsword_attack", "spell_cure_wounds"]
+      },
+      "featuresByLevel": {
+        "1": ["divine_sense", "lay_on_hands"],
+        "2": ["fighting_style", "spellcasting", "divine_smite"],
+        "3": ["divine_health", "sacred_oath"]
+      },
+      "inventory": ["holy_symbol", "potion_healing", "priests_pack"]
+    },
+    "ranger": {
+      "label": "Ranger",
+      "hitDie": 10,
+      "savingThrows": ["str", "dex"],
+      "skillChoices": 3,
+      "skillList": ["animal_handling", "athletics", "insight", "investigation", "nature", "perception", "stealth", "survival"],
+      "armor": "scale_mail",
+      "shield": false,
+      "spellcasting": "half",
+      "spellAbility": "wis",
+      "spellsKnown": { "1": 0, "2": 2, "3": 3 },
+      "fightingStyleAt": 2,
+      "fightingStyleOptions": ["archery", "defense", "dueling", "two_weapon"],
+      "spellLists": {
+        "cantrips": [],
+        "1": ["spell_cure_wounds", "spell_hunters_mark"],
+        "2": []
+      },
+      "primaryWeapons": ["shortsword", "shortbow"],
+      "actionsByLevel": {
+        "1": ["shortbow_attack", "shortsword_attack"],
+        "2": ["shortbow_attack", "shortsword_attack", "spell_hunters_mark"],
+        "3": ["shortbow_attack", "shortsword_attack", "spell_hunters_mark"]
+      },
+      "featuresByLevel": {
+        "1": ["favored_enemy", "natural_explorer"],
+        "2": ["fighting_style", "spellcasting"],
+        "3": ["ranger_archetype", "primeval_awareness"]
+      },
+      "inventory": ["potion_healing", "explorers_pack"]
+    },
+    "rogue": {
+      "label": "Rogue",
+      "hitDie": 8,
+      "savingThrows": ["dex", "int"],
+      "skillChoices": 4,
+      "skillList": ["acrobatics", "athletics", "deception", "insight", "intimidation", "investigation", "perception", "performance", "persuasion", "sleight_of_hand", "stealth"],
+      "armor": "leather",
+      "shield": false,
+      "primaryWeapons": ["shortbow", "dagger"],
+      "actionsByLevel": {
+        "1": ["shortbow_attack", "dagger_attack"],
+        "2": ["shortbow_attack", "dagger_attack"],
+        "3": ["shortbow_attack", "dagger_attack"]
+      },
+      "traitsByLevel": {
+        "1": ["sneak_attack_1d6"],
+        "2": ["sneak_attack_1d6", "cunning_action"],
+        "3": ["sneak_attack_2d6", "cunning_action"]
+      },
+      "featuresByLevel": {
+        "1": ["expertise", "sneak_attack", "thieves_cant"],
+        "2": ["cunning_action"],
+        "3": ["roguish_archetype"]
+      },
+      "inventory": ["thieves_tools", "potion_healing", "burglars_pack"]
+    },
+    "sorcerer": {
+      "label": "Sorcerer",
+      "hitDie": 6,
+      "savingThrows": ["con", "cha"],
+      "skillChoices": 2,
+      "skillList": ["arcana", "deception", "insight", "intimidation", "persuasion", "religion"],
+      "armor": "none",
+      "shield": false,
+      "spellcasting": "full",
+      "spellAbility": "cha",
+      "cantripsKnown": { "1": 4, "2": 4, "3": 4 },
+      "spellsKnown": { "1": 2, "2": 3, "3": 4 },
+      "spellLists": {
+        "cantrips": ["fire_bolt", "light", "mage_hand", "prestidigitation"],
+        "1": ["spell_magic_missile", "spell_burning_hands", "spell_shield"],
+        "2": []
+      },
+      "primaryWeapons": ["dagger", "quarterstaff"],
+      "actionsByLevel": {
+        "1": ["spell_magic_missile", "spell_burning_hands", "dagger_attack"],
+        "2": ["spell_magic_missile", "spell_burning_hands", "dagger_attack"],
+        "3": ["spell_magic_missile", "spell_burning_hands", "dagger_attack"]
+      },
+      "featuresByLevel": {
+        "1": ["spellcasting", "sorcerous_origin"],
+        "2": ["font_of_magic"],
+        "3": ["metamagic"]
+      },
+      "inventory": ["component_pouch", "potion_healing", "dungeoneers_pack"]
+    },
+    "warlock": {
+      "label": "Warlock",
+      "hitDie": 8,
+      "savingThrows": ["wis", "cha"],
+      "skillChoices": 2,
+      "skillList": ["arcana", "deception", "history", "intimidation", "investigation", "nature", "religion"],
+      "armor": "leather",
+      "shield": false,
+      "spellcasting": "pact",
+      "spellAbility": "cha",
+      "cantripsKnown": { "1": 2, "2": 2, "3": 2 },
+      "spellsKnown": { "1": 2, "2": 3, "3": 4 },
+      "spellLists": {
+        "cantrips": ["eldritch_blast", "mage_hand"],
+        "1": ["spell_magic_missile", "spell_burning_hands", "spell_hex"],
+        "2": []
+      },
+      "primaryWeapons": ["dagger", "light_crossbow"],
+      "actionsByLevel": {
+        "1": ["spell_magic_missile", "dagger_attack"],
+        "2": ["spell_magic_missile", "dagger_attack"],
+        "3": ["spell_magic_missile", "spell_burning_hands", "dagger_attack"]
+      },
+      "featuresByLevel": {
+        "1": ["otherworldly_patron", "pact_magic"],
+        "2": ["eldritch_invocations"],
+        "3": ["pact_boon"]
+      },
+      "inventory": ["component_pouch", "potion_healing", "scholars_pack"]
+    },
+    "wizard": {
+      "label": "Wizard",
+      "hitDie": 6,
+      "savingThrows": ["int", "wis"],
+      "skillChoices": 2,
+      "skillList": ["arcana", "history", "insight", "investigation", "medicine", "religion"],
+      "armor": "none",
+      "shield": false,
+      "spellcasting": "full",
+      "spellAbility": "int",
+      "cantripsKnown": { "1": 3, "2": 3, "3": 3 },
+      "spellbookAt1": 6,
+      "spellbookPerLevel": 2,
+      "preparedFormula": "int+level",
+      "spellLists": {
+        "cantrips": ["fire_bolt", "light", "mage_hand", "prestidigitation", "ray_of_frost"],
+        "1": ["spell_magic_missile", "spell_burning_hands", "spell_shield", "spell_mage_armor", "spell_detect_magic", "spell_sleep"],
+        "2": ["spell_misty_step", "spell_scorching_ray"]
+      },
+      "primaryWeapons": ["quarterstaff", "dagger"],
+      "actionsByLevel": {
+        "1": ["spell_magic_missile", "spell_burning_hands", "quarterstaff_attack"],
+        "2": ["spell_magic_missile", "spell_burning_hands", "quarterstaff_attack"],
+        "3": ["spell_magic_missile", "spell_burning_hands", "quarterstaff_attack"]
+      },
+      "featuresByLevel": {
+        "1": ["spellcasting", "arcane_recovery"],
+        "2": ["arcane_tradition"],
+        "3": ["tradition_feature"]
+      },
+      "inventory": ["component_pouch", "spellbook", "potion_healing", "scholars_pack"]
+    }
+  },
+  "spellSlots": {
+    "full": {
+      "1": { "1": 2 },
+      "2": { "1": 3 },
+      "3": { "1": 4, "2": 2 }
+    },
+    "half": {
+      "1": {},
+      "2": { "1": 2 },
+      "3": { "1": 3 }
+    },
+    "pact": {
+      "1": { "1": 1 },
+      "2": { "1": 2 },
+      "3": { "2": 2 }
+    }
+  },
+  "spellCatalog": {
+    "fire_bolt": { "label": "Fire Bolt", "level": 0 },
+    "light": { "label": "Light", "level": 0 },
+    "mage_hand": { "label": "Mage Hand", "level": 0 },
+    "prestidigitation": { "label": "Prestidigitation", "level": 0 },
+    "ray_of_frost": { "label": "Ray of Frost", "level": 0 },
+    "sacred_flame": { "label": "Sacred Flame", "level": 0 },
+    "thaumaturgy": { "label": "Thaumaturgy", "level": 0 },
+    "druidcraft": { "label": "Druidcraft", "level": 0 },
+    "produce_flame": { "label": "Produce Flame", "level": 0 },
+    "vicious_mockery": { "label": "Vicious Mockery", "level": 0 },
+    "eldritch_blast": { "label": "Eldritch Blast", "level": 0 },
+    "spell_magic_missile": { "label": "Magic Missile", "level": 1, "combat": true },
+    "spell_burning_hands": { "label": "Burning Hands", "level": 1, "combat": true },
+    "spell_shield": { "label": "Shield", "level": 1, "combat": true },
+    "spell_cure_wounds": { "label": "Cure Wounds", "level": 1, "combat": true },
+    "spell_guiding_bolt": { "label": "Guiding Bolt", "level": 1, "combat": true },
+    "spell_bless": { "label": "Bless", "level": 1 },
+    "spell_mage_armor": { "label": "Mage Armor", "level": 1 },
+    "spell_detect_magic": { "label": "Detect Magic", "level": 1 },
+    "spell_sleep": { "label": "Sleep", "level": 1 },
+    "spell_entangle": { "label": "Entangle", "level": 1 },
+    "spell_hunters_mark": { "label": "Hunter's Mark", "level": 1, "combat": true },
+    "spell_hex": { "label": "Hex", "level": 1 },
+    "spell_heroism": { "label": "Heroism", "level": 1 },
+    "spell_misty_step": { "label": "Misty Step", "level": 2 },
+    "spell_scorching_ray": { "label": "Scorching Ray", "level": 2 },
+    "spell_spiritual_weapon": { "label": "Spiritual Weapon", "level": 2 }
+  }
+}

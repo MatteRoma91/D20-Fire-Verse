@@ -1,0 +1,44 @@
+{
+  "id": "luppolandia-brew",
+  "title": "A Very Potent Brew",
+  "subtitle": "The Wizard's Tower Brewing Co. — full oneshot",
+  "version": "0.2.0-full-oneshot",
+  "language": "en",
+  "estimatedMinutes": { "min": 150, "max": 210 },
+  "playerCount": { "min": 1, "max": 3 },
+  "startingLevel": 3,
+  "source": {
+    "adaptedFrom": "Una Birra Molto Potente (Luppolandia oneshot) v9",
+    "localPath": "/home/ubuntu/oneshot",
+    "adaptationNotes": "Faithful path: Stairs → Mosaic corridor (tiles) → Cellar / Well / Store (free order, 3 seals) → Lab vault → Infernal Spider → Magma Rat on return. TV-adapted puzzles (sequence buttons). Combat + chargen + Fire TV UI retained."
+  },
+  "legal": {
+    "rules": "5E-compatible using SRD-only mechanics",
+    "forbiddenTerms": ["Dungeons & Dragons", "D&D", "Dungeon Master"],
+    "setting": "Original — Luppolandia"
+  },
+  "startNodeId": "hook_notice",
+  "pregenIds": [
+    "brenna_ironveal",
+    "quill_ashmere",
+    "mira_softstep",
+    "torin_emberhand"
+  ],
+  "flow": [
+    "hook_notice",
+    "glowkindle",
+    "descend",
+    "corridor_hub",
+    "cellar | well | store (free order)",
+    "lab_vault",
+    "fight_spider",
+    "cliffhanger_magma",
+    "epilogue"
+  ],
+  "alexaHints": {
+    "tavern": { "lightColorHex": "#C45C26", "ambientTrack": "tavern_soft" },
+    "explore": { "lightColorHex": "#3A4A5A", "ambientTrack": "dungeon_drip" },
+    "combat": { "lightColorHex": "#8B0000", "lightPulse": true, "ambientTrack": "combat_drums" },
+    "boss": { "lightColorHex": "#FF3300", "lightPulse": true, "ambientTrack": "boss_low" }
+  }
+}

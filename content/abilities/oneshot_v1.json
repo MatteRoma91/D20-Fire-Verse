@@ -1,0 +1,514 @@
+{
+  "giant_rat_bite": {
+    "id": "giant_rat_bite",
+    "name": "Bite",
+    "actionType": "action",
+    "effects": [
+      {
+        "type": "attack",
+        "attackBonus": 4,
+        "rangeCells": 1,
+        "damage": [{ "dice": "1d4+2", "damageType": "piercing" }]
+      }
+    ]
+  },
+  "centipede_bite": {
+    "id": "centipede_bite",
+    "name": "Bite",
+    "actionType": "action",
+    "effects": [
+      {
+        "type": "attack",
+        "attackBonus": 4,
+        "rangeCells": 1,
+        "damage": [{ "dice": "1d4+2", "damageType": "piercing" }],
+        "onHitSave": {
+          "ability": "con",
+          "dc": 11,
+          "condition": "poisoned"
+        }
+      }
+    ]
+  },
+  "infernal_spider_bite": {
+    "id": "infernal_spider_bite",
+    "name": "Flaming Bite",
+    "actionType": "action",
+    "effects": [
+      {
+        "type": "attack",
+        "attackBonus": 5,
+        "rangeCells": 1,
+        "damage": [{ "dice": "1d8+2", "damageType": "piercing" }],
+        "onHitSave": {
+          "ability": "con",
+          "dc": 12,
+          "damage": [{ "dice": "2d6", "damageType": "fire" }]
+        }
+      }
+    ]
+  },
+  "infernal_spider_web": {
+    "id": "infernal_spider_web",
+    "name": "Burning Web",
+    "actionType": "action",
+    "recharge": "5-6",
+    "effects": [
+      {
+        "type": "attack",
+        "attackBonus": 5,
+        "rangeCells": 6,
+        "longRangeCells": 12,
+        "onHit": [
+          { "type": "condition", "condition": "restrained" },
+          {
+            "type": "damage_per_turn_start",
+            "dice": "1d6",
+            "damageType": "fire"
+          }
+        ],
+        "escape": { "check": "str", "dc": 12, "action": true }
+      }
+    ]
+  },
+  "magma_rat_bite": {
+    "id": "magma_rat_bite",
+    "name": "Fiery Bite",
+    "actionType": "action",
+    "effects": [
+      {
+        "type": "attack",
+        "attackBonus": 4,
+        "rangeCells": 1,
+        "damage": [
+          { "dice": "1d6+2", "damageType": "piercing" },
+          { "dice": "1d8", "damageType": "fire" }
+        ]
+      }
+    ]
+  },
+  "magma_aura": {
+    "id": "magma_aura",
+    "name": "Incandescent Aura",
+    "actionType": "trait",
+    "effects": [
+      {
+        "type": "aura",
+        "radiusCells": 1,
+        "trigger": "start_of_turn",
+        "damage": [{ "dice": "1d6", "damageType": "fire" }]
+      }
+    ]
+  },
+  "longsword_attack": {
+    "id": "longsword_attack",
+    "name": "Longsword",
+    "actionType": "action",
+    "effects": [
+      {
+        "type": "attack",
+        "ability": "str",
+        "proficient": true,
+        "rangeCells": 1,
+        "damage": [{ "dice": "1d8", "damageType": "slashing", "ability": "str" }]
+      }
+    ]
+  },
+  "shortbow_attack": {
+    "id": "shortbow_attack",
+    "name": "Shortbow",
+    "actionType": "action",
+    "effects": [
+      {
+        "type": "attack",
+        "ability": "dex",
+        "proficient": true,
+        "rangeCells": 16,
+        "longRangeCells": 64,
+        "damage": [{ "dice": "1d6", "damageType": "piercing", "ability": "dex" }]
+      }
+    ]
+  },
+  "mace_attack": {
+    "id": "mace_attack",
+    "name": "Mace",
+    "actionType": "action",
+    "effects": [
+      {
+        "type": "attack",
+        "ability": "str",
+        "proficient": true,
+        "rangeCells": 1,
+        "damage": [{ "dice": "1d6", "damageType": "bludgeoning", "ability": "str" }]
+      }
+    ]
+  },
+  "dagger_attack": {
+    "id": "dagger_attack",
+    "name": "Dagger",
+    "actionType": "action",
+    "effects": [
+      {
+        "type": "attack",
+        "ability": "dex",
+        "proficient": true,
+        "rangeCells": 1,
+        "damage": [{ "dice": "1d4", "damageType": "piercing", "ability": "dex" }],
+        "sneakAttackEligible": true
+      }
+    ]
+  },
+  "quarterstaff_attack": {
+    "id": "quarterstaff_attack",
+    "name": "Quarterstaff",
+    "actionType": "action",
+    "effects": [
+      {
+        "type": "attack",
+        "ability": "str",
+        "proficient": true,
+        "rangeCells": 1,
+        "damage": [{ "dice": "1d6", "damageType": "bludgeoning", "ability": "str" }]
+      }
+    ]
+  },
+  "shortsword_attack": {
+    "id": "shortsword_attack",
+    "name": "Shortsword",
+    "actionType": "action",
+    "effects": [
+      {
+        "type": "attack",
+        "ability": "dex",
+        "proficient": true,
+        "rangeCells": 1,
+        "damage": [{ "dice": "1d6", "damageType": "piercing", "ability": "dex" }],
+        "sneakAttackEligible": true
+      }
+    ]
+  },
+  "scimitar_attack": {
+    "id": "scimitar_attack",
+    "name": "Scimitar",
+    "actionType": "action",
+    "effects": [
+      {
+        "type": "attack",
+        "ability": "dex",
+        "proficient": true,
+        "rangeCells": 1,
+        "damage": [{ "dice": "1d6", "damageType": "slashing", "ability": "dex" }],
+        "sneakAttackEligible": true
+      }
+    ]
+  },
+  "greataxe_attack": {
+    "id": "greataxe_attack",
+    "name": "Greataxe",
+    "actionType": "action",
+    "effects": [
+      {
+        "type": "attack",
+        "ability": "str",
+        "proficient": true,
+        "rangeCells": 1,
+        "damage": [{ "dice": "1d12", "damageType": "slashing", "ability": "str" }]
+      }
+    ]
+  },
+  "handaxe_attack": {
+    "id": "handaxe_attack",
+    "name": "Handaxe",
+    "actionType": "action",
+    "effects": [
+      {
+        "type": "attack",
+        "ability": "str",
+        "proficient": true,
+        "rangeCells": 4,
+        "longRangeCells": 12,
+        "damage": [{ "dice": "1d6", "damageType": "slashing", "ability": "str" }]
+      }
+    ]
+  },
+  "javelin_attack": {
+    "id": "javelin_attack",
+    "name": "Javelin",
+    "actionType": "action",
+    "effects": [
+      {
+        "type": "attack",
+        "ability": "str",
+        "proficient": true,
+        "rangeCells": 6,
+        "longRangeCells": 24,
+        "damage": [{ "dice": "1d6", "damageType": "piercing", "ability": "str" }]
+      }
+    ]
+  },
+  "spear_attack": {
+    "id": "spear_attack",
+    "name": "Spear",
+    "actionType": "action",
+    "effects": [
+      {
+        "type": "attack",
+        "ability": "str",
+        "proficient": true,
+        "rangeCells": 1,
+        "damage": [{ "dice": "1d6", "damageType": "piercing", "ability": "str" }]
+      }
+    ]
+  },
+  "club_attack": {
+    "id": "club_attack",
+    "name": "Club",
+    "actionType": "action",
+    "effects": [
+      {
+        "type": "attack",
+        "ability": "str",
+        "proficient": true,
+        "rangeCells": 1,
+        "damage": [{ "dice": "1d4", "damageType": "bludgeoning", "ability": "str" }]
+      }
+    ]
+  },
+  "light_crossbow_attack": {
+    "id": "light_crossbow_attack",
+    "name": "Light Crossbow",
+    "actionType": "action",
+    "effects": [
+      {
+        "type": "attack",
+        "ability": "dex",
+        "proficient": true,
+        "rangeCells": 16,
+        "longRangeCells": 64,
+        "damage": [{ "dice": "1d8", "damageType": "piercing", "ability": "dex" }]
+      }
+    ]
+  },
+  "unarmed_strike": {
+    "id": "unarmed_strike",
+    "name": "Unarmed Strike",
+    "actionType": "action",
+    "effects": [
+      {
+        "type": "attack",
+        "ability": "dex",
+        "proficient": true,
+        "rangeCells": 1,
+        "damage": [{ "dice": "1d4", "damageType": "bludgeoning", "ability": "dex" }]
+      }
+    ]
+  },
+  "spell_hunters_mark": {
+    "id": "spell_hunters_mark",
+    "name": "Hunter's Mark",
+    "actionType": "bonus_action",
+    "level": 1,
+    "effects": [
+      {
+        "type": "attack",
+        "spellAttack": false,
+        "ability": "wis",
+        "rangeCells": 18,
+        "damage": [{ "dice": "1d6", "damageType": "weapon" }]
+      }
+    ]
+  },
+  "spell_bless": {
+    "id": "spell_bless",
+    "name": "Bless",
+    "actionType": "action",
+    "level": 1,
+    "needsTarget": false,
+    "effects": [
+      {
+        "type": "buff",
+        "bonus": "1d4",
+        "duration": "concentration",
+        "slot": 1
+      }
+    ]
+  },
+
+  "spell_cure_wounds": {
+    "id": "spell_cure_wounds",
+    "name": "Cure Wounds",
+    "actionType": "action",
+    "level": 1,
+    "school": "evocation",
+    "effects": [
+      {
+        "type": "heal",
+        "dice": "1d8",
+        "ability": "wis",
+        "rangeCells": 1,
+        "slot": 1
+      }
+    ]
+  },
+  "spell_guiding_bolt": {
+    "id": "spell_guiding_bolt",
+    "name": "Guiding Bolt",
+    "actionType": "action",
+    "level": 1,
+    "effects": [
+      {
+        "type": "attack",
+        "spellAttack": true,
+        "ability": "wis",
+        "rangeCells": 24,
+        "damage": [{ "dice": "4d6", "damageType": "radiant" }],
+        "onHit": [{ "type": "condition", "condition": "attack_advantage_next", "durationRounds": 1 }]
+      }
+    ]
+  },
+  "spell_magic_missile": {
+    "id": "spell_magic_missile",
+    "name": "Magic Missile",
+    "actionType": "action",
+    "level": 1,
+    "effects": [
+      {
+        "type": "auto_hit",
+        "missiles": 3,
+        "rangeCells": 24,
+        "damage": [{ "dice": "1d4+1", "damageType": "force" }],
+        "slot": 1
+      }
+    ]
+  },
+  "spell_burning_hands": {
+    "id": "spell_burning_hands",
+    "name": "Burning Hands",
+    "actionType": "action",
+    "level": 1,
+    "effects": [
+      {
+        "type": "save",
+        "ability": "dex",
+        "dcFrom": "int",
+        "shape": "cone",
+        "lengthCells": 3,
+        "damage": [{ "dice": "3d6", "damageType": "fire" }],
+        "halfOnSuccess": true,
+        "slot": 1
+      }
+    ]
+  },
+  "spell_shield": {
+    "id": "spell_shield",
+    "name": "Shield",
+    "actionType": "reaction",
+    "level": 1,
+    "effects": [
+      {
+        "type": "buff",
+        "acBonus": 5,
+        "duration": "start_of_your_next_turn",
+        "slot": 1
+      }
+    ]
+  },
+  "second_wind": {
+    "id": "second_wind",
+    "name": "Second Wind",
+    "actionType": "bonus_action",
+    "usesPerRest": "short",
+    "effects": [
+      { "type": "heal", "dice": "1d10+3", "self": true }
+    ]
+  },
+  "std_dash": {
+    "id": "std_dash",
+    "name": "Dash",
+    "actionType": "action",
+    "needsTarget": false,
+    "effects": [{ "type": "dash" }]
+  },
+  "std_disengage": {
+    "id": "std_disengage",
+    "name": "Disengage",
+    "actionType": "action",
+    "needsTarget": false,
+    "effects": [{ "type": "disengage" }]
+  },
+  "std_dodge": {
+    "id": "std_dodge",
+    "name": "Dodge",
+    "actionType": "action",
+    "needsTarget": false,
+    "effects": [{ "type": "dodge" }]
+  },
+  "std_help": {
+    "id": "std_help",
+    "name": "Help",
+    "actionType": "action",
+    "needsTarget": true,
+    "effects": [{ "type": "help", "rangeCells": 1 }]
+  },
+  "std_hide": {
+    "id": "std_hide",
+    "name": "Hide",
+    "actionType": "action",
+    "needsTarget": false,
+    "effects": [{ "type": "hide" }]
+  },
+  "std_ready": {
+    "id": "std_ready",
+    "name": "Ready",
+    "actionType": "action",
+    "needsTarget": false,
+    "effects": [{ "type": "ready" }]
+  },
+  "std_search": {
+    "id": "std_search",
+    "name": "Search",
+    "actionType": "action",
+    "needsTarget": false,
+    "effects": [{ "type": "search" }]
+  },
+  "use_potion_healing": {
+    "id": "use_potion_healing",
+    "name": "Use Object: Potion of Healing",
+    "actionType": "action",
+    "needsTarget": false,
+    "effects": [{ "type": "heal", "dice": "2d4+2", "self": true, "consume": "potion_healing" }]
+  },
+  "cunning_dash": {
+    "id": "cunning_dash",
+    "name": "Cunning Action: Dash",
+    "actionType": "bonus_action",
+    "needsTarget": false,
+    "effects": [{ "type": "dash" }]
+  },
+  "cunning_disengage": {
+    "id": "cunning_disengage",
+    "name": "Cunning Action: Disengage",
+    "actionType": "bonus_action",
+    "needsTarget": false,
+    "effects": [{ "type": "disengage" }]
+  },
+  "cunning_hide": {
+    "id": "cunning_hide",
+    "name": "Cunning Action: Hide",
+    "actionType": "bonus_action",
+    "needsTarget": false,
+    "effects": [{ "type": "hide" }]
+  },
+  "sneak_attack_2d6": {
+    "id": "sneak_attack_2d6",
+    "name": "Sneak Attack",
+    "actionType": "trait",
+    "effects": [
+      {
+        "type": "bonus_damage_on_attack",
+        "dice": "2d6",
+        "requires": ["advantage_or_ally_adjacent"]
+      }
+    ]
+  }
+}
