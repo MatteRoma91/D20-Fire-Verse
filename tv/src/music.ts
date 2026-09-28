@@ -1,5 +1,7 @@
 /** Scene score: seven looping cues rendered by tools/music/compose.py, crossfaded on the table's AudioContext. */
 
+import { onSettings, settings } from "./settings";
+
 export const MUSIC_TRACKS = [
   "title",
   "tavern",
@@ -78,7 +80,6 @@ function fadeInto(track: MusicTrack): number {
   }
 }
 
-const VOLUME = 0.55;
 const DUCK = 0.4;
 const DECODED_LIMIT = 3;
 const STORAGE_KEY = "fireverse.music";
@@ -170,7 +171,8 @@ async function bufferFor(track: MusicTrack): Promise<AudioBuffer | null> {
 
 function busLevel(): number {
   if (!enabled) return 0;
-  return ducked ? VOLUME * DUCK : VOLUME;
+  const volume = settings().music;
+  return ducked ? volume * DUCK : volume;
 }
 
 function rampBus(seconds: number) {
@@ -231,6 +233,7 @@ export function attachMusic(context: AudioContext, destination: AudioNode) {
   bus.gain.value = 0;
   bus.connect(destination);
   rampBus(0.6);
+  onSettings(() => rampBus(0.25));
   void apply();
   void prefetch();
 }

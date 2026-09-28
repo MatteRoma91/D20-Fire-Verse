@@ -12,5 +12,16 @@ export default defineConfig({
   build: {
     outDir: "dist",
     emptyOutDir: true,
+    target: "es2020",
+    chunkSizeWarningLimit: 700,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes("node_modules/three")) return "three";
+          if (id.includes("node_modules/pixi.js") || id.includes("node_modules/@pixi")) return "pixi";
+          return undefined;
+        },
+      },
+    },
   },
 });

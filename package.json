@@ -13,6 +13,9 @@
     "dev:tv": "npm run dev -w @d20-fireverse/tv",
     "dev:companion": "npm run dev -w @d20-fireverse/companion",
     "build:tv": "npm run build -w @d20-fireverse/tv",
-    "build:companion": "npm run build -w @d20-fireverse/companion"
+    "build:companion": "npm run build -w @d20-fireverse/companion",
+    "typecheck": "npm run typecheck -w @d20-fireverse/backend && tsc --noEmit -p tv && tsc --noEmit -p companion",
+    "test": "npm test -w @d20-fireverse/backend",
+    "build": "npm run build:tv && npm run build:companion"
   }
 }

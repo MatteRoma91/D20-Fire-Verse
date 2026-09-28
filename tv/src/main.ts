@@ -1,1122 +1,967 @@
+import "@fontsource/cinzel/500.css";
+import "@fontsource/cinzel/700.css";
+import "@fontsource-variable/literata/opsz.css";
+import "@fontsource-variable/literata/opsz-italic.css";
 import "./styles.css";
-import { Application, Container } from "pixi.js";
-import {
-  mountChargen,
-  type ChargenCatalog,
-} from "./chargen-ui";
+import { describeError, srdLabel } from "@d20-fireverse/protocol";
+import { normalizeScene, sceneLabel, unlockAudio, type RoomScene } from "./audio";
+import { mountChargen, type ChargenCatalog } from "./chargen-ui";
+import { CombatUi } from "./combat-ui";
+import { isD20, rollD20 } from "./dice3d";
+import { DUNGEON_ROOMS, roomForNode, type DungeonRoomId } from "./dungeon-map";
+import { onMusicChange, setMusic, toggleMusic, type MusicTrack } from "./music";
+import { moveFocus, ownsArrows, remoteKey, restoreFocus, setScopeProvider, type RemoteKey } from "./nav";
+import { companionUrl, qrSvg, REMOTE_LEGEND } from "./onboarding";
+import { puzzleBack, puzzleKindForNode, renderInteractivePuzzle } from "./puzzles";
+import { chapterCard, mountScenes, setScene } from "./scenefx";
 import { ART, sceneForNode } from "./scenes";
-import { renderPcSheet, type PcSheet } from "./pc-sheet";
-import { enqueueDice, onDiceCue } from "./dice-tray";
-import { audio, normalizeScene, sceneLabel, type RoomScene } from "./audio";
-import {
-  duckMusic,
-  onMusicChange,
-  setMusic,
-  toggleMusic,
-  type MusicState,
-  type MusicTrack,
-} from "./music";
-import {
-  cellAtPoint,
-  mountCombatBoard,
-  renderCombatBoard,
-  resetCombatBoard,
-} from "./combat-board";
-import { puzzleKindForNode, renderInteractivePuzzle } from "./puzzles";
-import {
-  DUNGEON_ROOMS,
-  cropStyle,
-  roomForNode,
-  type DungeonRoomId,
-} from "./dungeon-map";
-
-type Pregen = {
-  id: string;
-  name: string;
-  summary: string;
-  class: string;
-  level: number;
-  custom?: boolean;
-};
-type RoomState = {
-  roomCode: string;
-  nodeId: string;
-  nodeType: string;
-  narration?: string;
-  choices?: Array<{ id: string; label: string }>;
-  skillCheck?: { ability: string; skill?: string; dc: number };
-  puzzle?: {
-    kind: string;
-    picked: string[];
-    need: number;
-    fails: number;
-    feedback?: string;
-  } | null;
-  flags?: string[];
-  visitedRooms?: DungeonRoomId[];
-  currentRoom?: DungeonRoomId | null;
-  mapTokens?: Array<{
-    playerId: string;
-    name: string;
-    room: DungeonRoomId;
-    x: number;
-    y: number;
-  }>;
-  players?: Array<{ playerId: string; characterName: string; characterId: string }>;
-  lastDice?: {
-    id?: string;
-    roller: string;
-    notation: string;
-    values: number[];
-    total: number;
-    purpose?: string;
-    label?: string;
-    modifier?: number;
-    sides?: number[];
-    isCrit?: boolean;
-    isFumble?: boolean;
-  };
-  lastDiceBatch?: Array<{
-    id: string;
-    roller: string;
-    notation: string;
-    values: number[];
-    total: number;
-    purpose?: string;
-    label?: string;
-    modifier?: number;
-    sides?: number[];
-    isCrit?: boolean;
-    isFumble?: boolean;
-  }> | null;
-  combat?: CombatPublic | null;
-  localPlayerId?: string | null;
-  saveId?: string | null;
-  alexaScene?: string;
-};
-
-type CombatPublic = {
-  width: number;
-  height: number;
-  walls: boolean[][];
-  mapId?: string;
-  tokens: Array<{
-    id: string;
-    kind: string;
-    name: string;
-    x: number;
-    y: number;
-    hp: number;
-    maxHp: number;
-    dead: boolean;
-    playerId?: string;
-    hasAction?: boolean;
-    hasBonusAction?: boolean;
-    movementLeft?: number;
-  }>;
-  currentTokenId?: string;
-  currentName?: string;
-  reachable: Array<{ x: number; y: number }>;
-  log: string[];
-  status: string;
-  actions: Array<{
-    id: string;
-    name: string;
-    actionType: string;
-    economy?: string;
-    needsTarget?: boolean;
-    guided?: boolean;
-    available?: boolean;
-  }>;
-  actionMenu?: {
-    movement: { left: number; speed: number; hint: string };
-    actions: Array<{
-      id: string;
-      name: string;
-      economy: string;
-      needsTarget?: boolean;
-      guided?: boolean;
-      available?: boolean;
-    }>;
-    bonusActions: Array<{
-      id: string;
-      name: string;
-      economy: string;
-      needsTarget?: boolean;
-      available?: boolean;
-    }>;
-    flags: {
-      dodging: boolean;
-      disengaging: boolean;
-      hidden: boolean;
-      hasAction: boolean;
-      hasBonusAction: boolean;
-    };
-  } | null;
-  sheet?: PcSheet | null;
-};
+import { clearSession, loadSession, saveSession, type Session } from "./session";
+import { closeSettings, openSettings, settingsOpen } from "./settings-ui";
+import { onSettings, settings } from "./settings";
+import { sfx } from "./sfx";
+import type { Pregen, RoomState } from "./types";
+import { isNarrating, onSpokenCue, prefetchVoice, replayNarration, speak, stopNarration } from "./voice";
 
 type PageId = "home" | "lobby" | "story" | "combat";
 
-const appRoot = document.querySelector("#app")!;
+const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
+
+const appRoot = document.querySelector<HTMLElement>("#app")!;
 appRoot.innerHTML = `
-  <div class="stage-bg tone-warm" id="stageBg"></div>
+  <div class="stage" id="stage" aria-hidden="true"></div>
+  <div class="vignette" aria-hidden="true"></div>
   <div class="grain" aria-hidden="true"></div>
-  <div class="letterbox top" aria-hidden="true"></div>
-  <div class="letterbox bottom" aria-hidden="true"></div>
-  <div id="turnBanner" class="turn-banner" hidden>Turn</div>
-  <div class="shell">
-    <header class="topbar">
-      <div class="brand-mark">D20 FireVerse <span>· Luppolandia</span></div>
-      <div class="party-rail" id="partyRail"></div>
-      <div class="house-light" id="houseLight" data-scene="tavern">
-        <span class="lamp" aria-hidden="true"></span>
-        <span>
-          <span class="house-kicker">Room light</span>
-          <strong id="houseScene">Tavern</strong>
-        </span>
-      </div>
-      <button type="button" class="music-toggle" id="musicToggle" aria-pressed="true" title="Music (M)">
-        <span class="music-bars" aria-hidden="true"><i></i><i></i><i></i></span>
-        <span>
-          <span class="house-kicker" id="musicKicker">Music</span>
-          <strong id="musicTitle">A Very Potent Brew</strong>
-        </span>
-      </button>
-      <div class="conn" id="conn">Connecting…</div>
-    </header>
+  <header class="topbar">
+    <div class="brand-mark">D20 FireVerse <span>Luppolandia</span></div>
+    <ol class="party-rail" id="partyRail" aria-label="The party"></ol>
+    <div class="now-playing" id="nowPlaying" aria-live="off"><span class="music-bars" aria-hidden="true"><i></i><i></i><i></i></span><span><em id="musicKicker">Music</em><strong id="musicTitle">A Very Potent Brew</strong></span></div>
+    <div class="conn" id="conn" role="status">Connecting…</div>
+    <div class="menu-hint" aria-hidden="true"><kbd>☰</kbd> Settings</div>
+  </header>
 
-    <section class="page page-home active" id="pageHome">
+  <main class="pages">
+    <section class="page page-home active" id="pageHome" aria-label="Title">
       <div class="home-hero">
-        <p class="home-kicker">Luppolandia · one-shot</p>
+        <p class="home-kicker">A one-shot for the living room · 5E rules</p>
         <h1 class="home-title">A Very<br />Potent Brew</h1>
-        <p class="home-lead">
-          The television is the table. No one deals the story. A remote, a room
-          code, and whatever is still breathing under the brewery.
-        </p>
-        <div class="home-cta">
-          <button class="primary" type="button" id="btnEnter">Enter the tavern</button>
-          <button class="ghost" type="button" id="btnHomeResume">Resume a save</button>
-        </div>
-        <p class="home-hint">Arrows move · Enter confirms · 1–9 choose a line · M music</p>
-      </div>
-    </section>
-
-    <section class="page page-lobby" id="pageLobby">
-      <div class="glass fade-in">
-        <h2>Gather the party</h2>
-        <p class="lede">Create a room, pick a hero — or forge one from the SRD (levels 1–3).</p>
-        <div class="row">
-          <button class="primary" id="btnCreate" type="button">Create room</button>
-          <input id="joinCode" maxlength="6" placeholder="Room code" style="text-transform:uppercase;width:7rem" />
-          <input id="displayName" placeholder="Display name" style="width:9rem" />
-        </div>
-        <div class="row">
-          <label class="meta"><input type="checkbox" id="tts" checked /> Narration voice</label>
-          <button type="button" id="btnBackHome">← Home</button>
-        </div>
-        <div class="pregens" id="pregens"></div>
-        <div class="row" style="margin-top:0.75rem">
-          <button class="primary" id="btnJoin" type="button">Join with selected character</button>
-        </div>
-        <div class="row" style="margin-top:0.35rem">
-          <input id="saveId" placeholder="save id" style="width:10rem" />
-          <button type="button" id="btnResume">Resume</button>
+        <p class="home-lead">The television is the table. Nobody has to run the game: the rules roll every die in the open, the narrator reads every scene aloud, and the party decides the rest.</p>
+        <div class="home-cta" id="homeCta"></div>
+        <div class="home-load" id="homeLoad" hidden>
+          <input id="saveId" placeholder="Save code, e.g. save-ABC123-…" autocomplete="off" spellcheck="false" />
+          <button type="button" class="primary" id="btnResume">Load</button>
         </div>
       </div>
-      <div class="glass fade-in" id="chargenHost"></div>
+      <aside class="home-side">
+        <div class="card qr-card">
+          <p class="card-kicker">Bring a phone</p>
+          <div class="qr" id="homeQr"></div>
+          <p class="meta">Scan to open the companion and take a seat from the couch.</p>
+        </div>
+        <div class="card legend-card">
+          <p class="card-kicker">The remote is all you need</p>
+          ${REMOTE_LEGEND}
+        </div>
+      </aside>
     </section>
 
-    <section class="page page-story" id="pageStory">
+    <section class="page page-lobby" id="pageLobby" aria-label="Choose your hero">
+      <div class="lobby-main">
+        <p class="story-chapter">Gather the party</p>
+        <h2 class="lobby-title">Choose your hero</h2>
+        <p class="lede">Pick a painted hero to begin now, or forge your own from the SRD rules. Friends can join from their phones at any time outside a fight.</p>
+        <div class="hero-grid" id="heroGrid"></div>
+      </div>
+      <aside class="lobby-side">
+        <div class="card room-card">
+          <p class="card-kicker">This table</p>
+          <p class="room-code" id="roomCode">······</p>
+          <div class="qr" id="lobbyQr"></div>
+          <p class="meta" id="lobbyQrHint">Scan to join this table from a phone.</p>
+          <ul class="seats" id="lobbySeats"></ul>
+        </div>
+        <button type="button" class="primary" id="btnLobbyWatch" hidden>Begin with the party</button>
+        <button type="button" class="ghost" id="btnLobbyBack">↩ Back to the title</button>
+      </aside>
+      <div id="chargenHost" hidden></div>
+    </section>
+
+    <section class="page page-story" id="pageStory" aria-label="Story">
       <div class="story-frame">
         <p class="story-chapter" id="storyChapter"></p>
         <h1 class="story-title" id="storyTitle"></h1>
-        <div class="story-narration" id="narration"></div>
-        <div class="story-dice" id="dice"></div>
-        <div id="dungeonMapWrap" class="dungeon-map-wrap" hidden>
-          <img id="dungeonMap" src="/art/dungeon-map.jpg" alt="Brewery dungeon map" />
+        <div class="story-narration" id="narration" aria-live="polite"></div>
+        <p class="story-dice" id="storyDice" hidden></p>
+        <div class="dungeon-map-wrap" id="dungeonMapWrap" hidden>
+          <img id="dungeonMap" src="/art/dungeon-map.jpg" alt="Map of the brewery cellars" />
           <div class="fog-mask" id="fogMask"></div>
-          <div id="mapTokens" class="map-tokens"></div>
+          <div class="map-tokens" id="mapTokens"></div>
         </div>
-        <p class="map-caption" id="mapCaption" hidden></p>
         <div id="puzzleHost"></div>
-        <div class="choices" id="choices"></div>
-        <div class="story-meta-bar">
+        <div class="choices" id="choices" role="group" aria-label="What do you do?"></div>
+        <footer class="story-meta-bar">
           <span id="roomMeta"></span>
-          <button type="button" id="btnSave">Save progress</button>
-        </div>
+          <span class="seals" id="seals" aria-label="Seals"></span>
+          <span class="saved-chip" id="savedChip" hidden>✓ Progress saved</span>
+        </footer>
       </div>
     </section>
 
-    <section class="page page-combat" id="pageCombat">
+    <section class="page page-combat" id="pageCombat" aria-label="Combat">
       <div class="combat-head">
         <div>
-          <p class="story-chapter" id="combatChapter" style="margin:0"></p>
+          <p class="story-chapter" id="combatChapter"></p>
           <h2 id="combatTitle">Combat</h2>
         </div>
-        <div class="meta" id="turnMeta"></div>
+        <ol class="initiative" id="initiative" aria-label="Initiative order"></ol>
+        <div class="round" id="combatRound"></div>
       </div>
       <div class="combat-grid">
-        <div>
-          <div id="pixi-host" tabindex="0"></div>
-          <p class="meta" id="combatHint"></p>
+        <div class="board-col">
+          <div class="board" id="board" tabindex="0" data-arrows="all" data-nav-key="board" data-no-scroll="1" aria-label="Battle map"></div>
+          <p class="combat-hint" id="combatHint" aria-live="polite"></p>
+          <div class="action-bar" id="actionBar" role="toolbar" aria-label="Actions"></div>
         </div>
-        <div class="glass pcsheet-rail">
-          <div id="pcSheetHost"></div>
-          <div class="log" id="combatLog"></div>
-          <div class="row" style="margin-top:0.55rem">
-            <button type="button" id="btnSaveCombat">Save</button>
-            <button type="button" id="btnRetreat" hidden>Step back</button>
-          </div>
-        </div>
+        <aside class="sheet-rail">
+          <div id="pcSheet"></div>
+          <ol class="combat-log" id="combatLog" aria-label="Combat log"></ol>
+        </aside>
       </div>
     </section>
+  </main>
+
+  <div class="subtitles" id="subtitles" aria-live="polite" hidden><p></p></div>
+  <div class="turn-banner" id="turnBanner" hidden><strong></strong><span></span></div>
+  <div class="victory-banner" id="victoryBanner" hidden><p>Victory</p><span>The last of them falls.</span></div>
+  <div class="modal defeat-modal" id="defeatModal" hidden role="dialog" aria-label="The party has fallen">
+    <div class="modal-card">
+      <p class="modal-kicker">The party has fallen</p>
+      <h2>Darkness, for now</h2>
+      <p>The tale is not over. Rise and face them again from the first blow, or step back to safer stone and gather your strength.</p>
+      <div class="row modal-actions">
+        <button type="button" class="primary" id="btnRetry" data-autofocus>Rise again</button>
+        <button type="button" class="ghost" id="btnWithdraw">Step back</button>
+      </div>
+    </div>
   </div>
-  <p class="err" id="err"></p>
+  <div class="toast" id="toast" role="status" hidden></div>
 `;
 
-const $ = (id: string) => document.getElementById(id)!;
-const proto = location.protocol === "https:" ? "wss" : "ws";
-const wsUrl = `${proto}://${location.host}/ws`;
+const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 
-let ws: WebSocket;
-let pregens: Pregen[] = [];
-let selected: string | null = null;
+mountScenes($("stage"));
+
+let ws: WebSocket | null = null;
 let state: RoomState | null = null;
 let playerId: string | null = null;
-let cursor = { x: 1, y: 1 };
-let mode: "move" | "attack" = "move";
-let pendingAbility: {
-  id: string;
-  needsTarget: boolean;
-  economy: string;
-} | null = null;
-let lastSpoken = "";
-let currentPage: PageId = "home";
+let pregens: Pregen[] = [];
+let portraits: Array<{ id: string; url: string }> = [];
 let chargenApi: ReturnType<typeof mountChargen> | null = null;
-let wasCombat = false;
-let lastTurnId = "";
-let turnTimer = 0;
-let speechLine = 0;
+let page: PageId = "home";
+let resumedFirstState = true;
+let lastChapterKey = "";
+let lastStoryKey = "";
+let lastDiceId = "";
+let lastAutosave = "";
+let storyBusy = false;
+let joining = false;
+let pendingRejoin: Session | null = null;
+let reconnectDelay = 800;
+let toastTimer = 0;
+let captionTimer = 0;
+let savedTimer = 0;
 
-let pixi: Application | null = null;
-let gridLayer: Container | null = null;
+// ------------------------------------------------------------------ helpers
 
-function err(m = "", kind: "bad" | "ok" = "bad") {
-  const el = $("err");
-  el.textContent = m;
-  el.classList.toggle("ok", kind === "ok" && m.length > 0);
+function toast(text: string, kind: "bad" | "ok" | "info" = "bad") {
+  const el = $("toast");
+  el.textContent = text;
+  el.className = `toast show ${kind}`;
+  el.hidden = false;
+  window.clearTimeout(toastTimer);
+  toastTimer = window.setTimeout(() => {
+    el.classList.remove("show");
+    window.setTimeout(() => (el.hidden = true), 300);
+  }, kind === "bad" ? 4200 : 3200);
 }
-function send(obj: unknown) {
-  if (ws.readyState !== WebSocket.OPEN) {
-    err("Table is still connecting");
+
+function send(obj: Record<string, unknown>) {
+  if (!ws || ws.readyState !== WebSocket.OPEN) {
+    sfx("uiError");
+    toast("The table is reconnecting. Try again in a moment.", "info");
     return;
   }
   ws.send(JSON.stringify(obj));
-  const action = (obj as { action?: string }).action;
-  if (
-    action === "CHOOSE" ||
-    action === "PROPOSE_MOVE" ||
-    action === "PERFORM_ACTION" ||
-    action === "END_TURN" ||
-    action === "JOIN_ROOM" ||
-    action === "CREATE_ROOM"
-  ) {
-    audio.confirm();
+}
+
+function scopeRoot(): HTMLElement {
+  const modal = settingsOpen() ?? document.querySelector<HTMLElement>(".modal:not([hidden])");
+  if (modal) return modal;
+  const cg = document.querySelector<HTMLElement>(".chargen-panel.is-open");
+  if (cg) return cg;
+  return document.querySelector<HTMLElement>(".page.active") ?? document.body;
+}
+setScopeProvider(scopeRoot);
+
+function showPage(next: PageId) {
+  if (page === next && document.querySelector(`.page.active`)) {
+    return;
   }
+  page = next;
+  document.body.dataset.page = next;
+  document.body.classList.toggle("in-combat", next === "combat");
+  for (const [id, p] of [
+    ["pageHome", "home"],
+    ["pageLobby", "lobby"],
+    ["pageStory", "story"],
+    ["pageCombat", "combat"],
+  ] as const) {
+    $(id).classList.toggle("active", p === next);
+  }
+  if (next === "home") {
+    setScene(ART.home, "warm");
+    setMusic("title");
+    renderHome();
+  }
+  if (next === "lobby") {
+    setScene(ART.lobby, "warm");
+    setMusic("tavern");
+  }
+  if (next !== "combat") combat.reset();
+  requestAnimationFrame(() => restoreFocus(null));
 }
 
-function setBackground(art: string, tone: string) {
-  const bg = $("stageBg");
-  bg.style.backgroundImage = `url(${art})`;
-  bg.className = `stage-bg tone-${tone}`;
-}
-
-function setHouse(raw: string | undefined, fallback: RoomScene) {
-  const scene = normalizeScene(raw, fallback);
-  const el = $("houseLight");
-  el.dataset.scene = scene;
-  $("houseScene").textContent = sceneLabel(scene);
-  document.body.dataset.room = scene;
-}
-
-function musicFor(page: PageId): MusicTrack {
-  switch (page) {
-    case "home":
-      return "title";
-    case "lobby":
+function musicFor(s: RoomState): MusicTrack {
+  if (s.combat) {
+    if (s.combat.status === "defeat") return "tension";
+    return s.combat.tokens.some((t) => t.boss && !t.dead) ? "boss" : "combat";
+  }
+  if (s.nodeId === "END_WIN" || s.nodeId === "epilogue") return "victory";
+  switch (sceneForNode(s.nodeId).tone) {
+    case "warm":
       return "tavern";
-    case "combat": {
-      const combat = state?.combat;
-      if (combat?.status === "defeat") return "tension";
-      const scene = state ? sceneForNode(state.nodeId) : null;
-      return scene && /spider|magma/i.test(scene.title) ? "boss" : "combat";
-    }
-    case "story": {
-      if (!state) return "title";
-      if (state.nodeId === "END_WIN" || state.alexaScene === "victory") return "victory";
-      const tone = sceneForNode(state.nodeId).tone;
-      switch (tone) {
-        case "warm":
-          return "tavern";
-        case "ember":
-          return "tension";
-        case "victory":
-          return "victory";
-        case "cool":
-          return "descent";
-        default: {
-          const exhaustive: never = tone;
-          throw new Error(exhaustive);
-        }
-      }
-    }
-    default: {
-      const exhaustive: never = page;
-      throw new Error(exhaustive);
-    }
+    case "ember":
+      return "tension";
+    case "victory":
+      return "victory";
+    case "cool":
+      return "descent";
+    default:
+      return "descent";
   }
 }
+
+function roomScene(s: RoomState): RoomScene {
+  const scene = sceneForNode(s.nodeId);
+  if (s.combat) return s.combat.tokens.some((t) => t.boss) ? "boss" : "combat";
+  return normalizeScene(s.alexaScene, scene.tone === "victory" ? "victory" : scene.tone === "warm" ? "tavern" : "explore");
+}
+
+// ------------------------------------------------------------------ subtitles & captions
+
+function caption(text: string) {
+  if (page !== "combat") return;
+  showSubtitle(text, 3800);
+}
+
+function showSubtitle(text: string, hold = 0) {
+  const s = settings();
+  const el = $("subtitles");
+  if (!s.subtitles || !text) {
+    el.hidden = true;
+    return;
+  }
+  el.querySelector("p")!.textContent = text;
+  if (page === "combat") {
+    const r = $("board").getBoundingClientRect();
+    el.style.setProperty("--subs-top", `${Math.round(r.bottom - 16)}px`);
+  }
+  el.hidden = false;
+  el.classList.remove("fade");
+  window.clearTimeout(captionTimer);
+  if (hold) captionTimer = window.setTimeout(() => el.classList.add("fade"), hold);
+}
+
+onSpokenCue((cue) => {
+  const box = $("narration");
+  box.querySelectorAll(".spoken").forEach((n) => {
+    n.classList.remove("spoken");
+    n.classList.add("said");
+  });
+  box.classList.toggle("speaking", !!cue);
+  if (!cue) {
+    box.querySelectorAll(".said").forEach((n) => n.classList.remove("said"));
+    if (page !== "combat") $("subtitles").hidden = true;
+    return;
+  }
+  const norm = (t: string) => t.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  const target = norm(cue.text).slice(0, 36);
+  const spans = [...box.querySelectorAll<HTMLElement>(".sent")];
+  const hit = spans.find((s) => norm(s.textContent ?? "").includes(target) || target.includes(norm(s.textContent ?? "").slice(0, 36)));
+  if (hit && page === "story") {
+    hit.classList.add("spoken");
+    $("subtitles").hidden = true;
+    return;
+  }
+  showSubtitle(cue.text);
+});
+
+onSettings(() => {
+  if (!settings().subtitles) $("subtitles").hidden = true;
+});
+
+async function turnBanner(title: string, sub: string, tone: "mine" | "ally" | "foe") {
+  const el = $("turnBanner");
+  el.className = `turn-banner ${tone}`;
+  el.querySelector("strong")!.textContent = title;
+  el.querySelector("span")!.textContent = sub;
+  el.hidden = false;
+  void el.offsetWidth;
+  el.classList.add("slam");
+  await new Promise((r) => window.setTimeout(r, settings().motion === "reduced" ? 700 : tone === "mine" ? 1100 : 900));
+  el.classList.remove("slam");
+  el.hidden = true;
+}
+
+async function victory() {
+  const el = $("victoryBanner");
+  el.hidden = false;
+  void el.offsetWidth;
+  el.classList.add("show");
+  await new Promise((r) => window.setTimeout(r, 2300));
+  el.classList.remove("show");
+  window.setTimeout(() => (el.hidden = true), 500);
+}
+
+function setDefeat(defeated: boolean) {
+  const modal = $("defeatModal");
+  if (modal.hidden === !defeated) return;
+  modal.hidden = !defeated;
+  if (defeated) requestAnimationFrame(() => $("btnRetry").focus());
+}
+
+const combat = new CombatUi(
+  { send, toast, caption, turnBanner, victory, onDefeatChange: setDefeat },
+  {
+    board: $("board"),
+    ribbon: $("initiative"),
+    sheet: $("pcSheet"),
+    actions: $("actionBar"),
+    title: $("combatTitle"),
+    chapter: $("combatChapter"),
+    meta: $("combatRound"),
+    log: $("combatLog"),
+  },
+);
+
+$("btnRetry").addEventListener("click", () => {
+  sfx("uiConfirm");
+  $("defeatModal").hidden = true;
+  send({ action: "RETRY_COMBAT", roomCode: state?.roomCode });
+});
+$("btnWithdraw").addEventListener("click", () => {
+  sfx("uiBack");
+  $("defeatModal").hidden = true;
+  send({ action: "WITHDRAW", roomCode: state?.roomCode });
+});
+
+// ------------------------------------------------------------------ home
+
+function renderHome() {
+  const session = loadSession();
+  const cta = $("homeCta");
+  const cont = session
+    ? `<button type="button" class="primary continue" id="btnContinue" data-autofocus>
+        <strong>Continue</strong><span>${esc(session.hero ?? "Your party")}${session.place ? ` · ${esc(session.place)}` : ""}</span>
+      </button>`
+    : "";
+  cta.innerHTML = `${cont}
+    <button type="button" class="${session ? "" : "primary"}" id="btnNew" ${session ? "" : "data-autofocus"}>Begin a new tale</button>
+    <button type="button" class="ghost" id="btnLoad">Load a save code</button>
+    <button type="button" class="ghost" id="btnSettings">Settings</button>`;
+  $("btnContinue")?.addEventListener("click", () => continueSession());
+  $("btnNew").addEventListener("click", () => {
+    sfx("uiConfirm");
+    clearSession();
+    playerId = null;
+    state = null;
+    spectating = false;
+    lobbyEntry = null;
+    send({ action: "CREATE_ROOM" });
+    showPage("lobby");
+    renderLobby();
+  });
+  $("btnLoad").addEventListener("click", () => {
+    $("homeLoad").hidden = !$("homeLoad").hidden;
+    if (!$("homeLoad").hidden) $("saveId").focus();
+  });
+  $("btnSettings").addEventListener("click", () => openSettings());
+  void companionUrl().then((url) => ($("homeQr").innerHTML = qrSvg(url)));
+}
+
+function continueSession() {
+  const session = loadSession();
+  if (!session) return;
+  sfx("uiConfirm");
+  pendingRejoin = session;
+  resumedFirstState = true;
+  spectating = !session.playerId;
+  send({ action: "REJOIN", roomCode: session.roomCode, playerId: session.playerId ?? undefined });
+}
+
+$("btnResume").addEventListener("click", () => {
+  const saveId = ($("saveId") as HTMLInputElement).value.trim();
+  if (!saveId) {
+    toast("Type the save code you were given.", "info");
+    return;
+  }
+  resumedFirstState = true;
+  send({ action: "RESUME_SAVE", saveId });
+});
+$("saveId").addEventListener("keydown", (e) => {
+  if (e.key !== "Enter") return;
+  e.preventDefault();
+  $("btnResume").click();
+});
+
+// ------------------------------------------------------------------ lobby
+
+let selectedHero: string | null = null;
+/** The TV can host a party of phones without taking a seat itself. */
+let spectating = false;
+let lobbyEntry: { roomCode: string; seq: number } | null = null;
+
+function storyMovedOn(s: RoomState): boolean {
+  if (!lobbyEntry || lobbyEntry.roomCode !== s.roomCode) {
+    lobbyEntry = { roomCode: s.roomCode, seq: s.narrationSeq };
+    return false;
+  }
+  return s.players.length > 0 && s.narrationSeq > lobbyEntry.seq;
+}
+
+function renderLobby() {
+  const grid = $("heroGrid");
+  const taken = new Set((state?.players ?? []).map((p) => p.characterId));
+  grid.innerHTML =
+    pregens
+      .map((p) => {
+        const busy = taken.has(p.id);
+        return `<button type="button" class="hero-card ${busy ? "taken" : ""}" data-hero="${esc(p.id)}" ${busy ? "disabled" : ""} ${selectedHero === p.id ? "data-autofocus" : ""}>
+          <span class="hero-portrait">${p.portrait ? `<img src="${esc(p.portrait)}" alt="" loading="lazy" />` : ""}</span>
+          <span class="hero-copy">
+            <strong>${esc(p.name)}</strong>
+            <em>${esc([srdLabel(p.race), srdLabel(p.class), `level ${p.level}`].filter(Boolean).join(" · "))}${p.custom ? " · forged" : ""}</em>
+            <span>${esc(p.summary)}</span>
+          </span>
+          ${busy ? `<span class="hero-taken">At the table</span>` : ""}
+        </button>`;
+      })
+      .join("") +
+    `<button type="button" class="hero-card forge" id="btnForge">
+      <span class="hero-portrait forge-mark" aria-hidden="true">✦</span>
+      <span class="hero-copy"><strong>Forge a new hero</strong><em>SRD 5.1 · levels 1–3</em><span>Race, class, background, ability scores and a painted portrait.</span></span>
+    </button>`;
+  if (!grid.querySelector("[data-autofocus]")) grid.querySelector("button:not([disabled])")?.setAttribute("data-autofocus", "");
+  grid.querySelectorAll<HTMLElement>("[data-hero]").forEach((b) =>
+    b.addEventListener("click", () => {
+      const id = b.dataset.hero!;
+      if (!state?.roomCode) {
+        toast("Setting the table… try again in a moment.", "info");
+        return;
+      }
+      if (joining) return;
+      joining = true;
+      selectedHero = id;
+      sfx("uiConfirm");
+      const hero = pregens.find((p) => p.id === id);
+      send({ action: "JOIN_ROOM", roomCode: state.roomCode, characterId: id, displayName: hero?.name ?? "Hero" });
+      window.setTimeout(() => (joining = false), 3000);
+    }),
+  );
+  $("btnForge").addEventListener("click", () => {
+    sfx("uiConfirm");
+    chargenApi?.open();
+  });
+  const code = state?.roomCode ?? "······";
+  $("roomCode").textContent = code;
+  $("lobbySeats").innerHTML = (state?.players ?? [])
+    .map((p) => `<li><img src="${esc(p.portrait)}" alt="" /><span>${esc(p.characterName)}</span><em>${p.playerId === playerId ? "this TV" : "phone"}</em></li>`)
+    .join("");
+  const phones = (state?.players ?? []).length;
+  const watch = $("btnLobbyWatch");
+  watch.hidden = phones === 0;
+  watch.textContent = phones === 1 ? "Begin with the phone player" : `Begin with the ${phones} phone players`;
+  if (state?.roomCode) {
+    void companionUrl(state.roomCode).then((url) => {
+      $("lobbyQr").innerHTML = qrSvg(url);
+      $("lobbyQrHint").textContent = `Scan to join table ${state?.roomCode ?? ""} from a phone.`;
+    });
+  }
+}
+
+$("btnLobbyWatch").addEventListener("click", () => {
+  if (!state?.players.length) return;
+  sfx("uiConfirm");
+  spectating = true;
+  route();
+});
+
+$("btnLobbyBack").addEventListener("click", () => {
+  spectating = false;
+  sfx("uiBack");
+  showPage("home");
+});
+
+// ------------------------------------------------------------------ party rail
 
 function renderParty() {
   const rail = $("partyRail");
   const players = state?.players ?? [];
-  if (!players.length) {
-    rail.innerHTML = "";
-    return;
-  }
   const tokens = state?.combat?.tokens ?? [];
   rail.innerHTML = players
     .map((p) => {
-      const token = tokens.find((t) => t.playerId === p.playerId);
+      const t = tokens.find((x) => x.playerId === p.playerId);
+      const ratio = t ? Math.max(0, t.hp / t.maxHp) : 1;
       const mine = p.playerId === playerId;
-      const active = !!(token && state?.combat?.currentTokenId === token.id);
-      const detail = token
-        ? `${mine ? `${p.playerId} · ` : ""}${token.hp}/${token.maxHp}`
-        : mine
-          ? p.playerId
-          : "at the table";
-      return `<div class="seat ${mine ? "mine" : ""} ${active ? "active" : ""}">
-        <span class="seat-mark">${p.characterName.slice(0, 1)}</span>
-        <span class="seat-copy"><strong>${p.characterName.split(" ")[0]}</strong><em>${detail}</em></span>
-      </div>`;
+      const active = !!t && state?.combat?.currentTokenId === t.id;
+      return `<li class="seat ${mine ? "mine" : ""} ${active ? "active" : ""} ${t?.dead ? "down" : ""}" style="--hp:${ratio}">
+        <img src="${esc(p.portrait)}" alt="" />
+        <span><strong>${esc(p.characterName.split(" ")[0]!)}</strong><em>${t ? `${t.hp}/${t.maxHp} HP` : mine ? "this TV" : "phone"}</em></span>
+      </li>`;
     })
     .join("");
 }
 
-function slamTurn(name: string) {
-  const el = $("turnBanner");
-  window.clearTimeout(turnTimer);
-  el.hidden = false;
-  el.textContent = `${name}'s turn`;
-  el.classList.remove("slam");
-  void el.offsetWidth;
-  el.classList.add("slam");
-  audio.turn();
-  turnTimer = window.setTimeout(() => {
-    el.hidden = true;
-  }, 1400);
+// ------------------------------------------------------------------ story
+
+function sentences(text: string): string {
+  return text
+    .split(/\n{2,}/)
+    .map((para) => {
+      const parts = para.match(/[^.!?…]+[.!?…]+["')\]]*\s*|[^.!?…]+$/g) ?? [para];
+      return `<p>${parts.map((s) => `<span class="sent">${esc(s)}</span>`).join("")}</p>`;
+    })
+    .join("");
 }
 
-function moveFocus(dir: 1 | -1, rootSel: string) {
-  const root = document.querySelector(rootSel);
-  if (!root) return;
-  const nodes = [
-    ...root.querySelectorAll<HTMLElement>("button:not([disabled]), input:not([disabled])"),
-  ].filter((el) => el.offsetParent !== null);
-  if (!nodes.length) return;
-  const i = nodes.indexOf(document.activeElement as HTMLElement);
-  const base = i < 0 ? (dir === 1 ? -1 : 0) : i;
-  nodes[(base + dir + nodes.length) % nodes.length]?.focus();
+function chapterOf(chapter: string): { key: string; kicker: string; title: string } | null {
+  const [head, tail] = chapter.split("·").map((s) => s.trim());
+  if (!head) return null;
+  if (!/^(Act|Seal|Finale|Epilogue)/.test(head)) return null;
+  return { key: head, kicker: head, title: tail || head };
 }
 
-function showPage(page: PageId) {
-  currentPage = page;
-  document.body.classList.toggle("cinematic", page === "story" || page === "combat");
-  for (const id of ["pageHome", "pageLobby", "pageStory", "pageCombat"]) {
-    $(id).classList.remove("active");
+function renderSeals() {
+  const flags = new Set(state?.flags ?? []);
+  $("seals").innerHTML = (
+    [
+      ["seal_cellar", "Cellar"],
+      ["seal_well", "Well"],
+      ["seal_store", "Store"],
+    ] as const
+  )
+    .map(([f, label]) => `<span class="seal ${flags.has(f) ? "on" : ""}" title="Seal of the ${label}">◈ ${label}</span>`)
+    .join("");
+}
+
+function renderMap(s: RoomState) {
+  const wrap = $("dungeonMapWrap");
+  const area = s.currentRoom ?? roomForNode(s.nodeId);
+  const visited = new Set<DungeonRoomId>(s.visitedRooms ?? []);
+  const show = !!area && visited.size > 0 && !puzzleKindForNode(s.nodeId);
+  wrap.hidden = !show;
+  if (!show) return;
+  $("fogMask").innerHTML = (Object.keys(DUNGEON_ROOMS) as DungeonRoomId[])
+    .map((id) => `<div class="fog ${visited.has(id) ? "revealed" : ""} ${id === area ? "here" : ""}" data-room="${id}" data-label="${visited.has(id) ? DUNGEON_ROOMS[id].label : "?"}"></div>`)
+    .join("");
+  $("mapTokens").innerHTML = (s.mapTokens ?? [])
+    .filter((t) => visited.has(t.room))
+    .map((t) => {
+      const p = s.players.find((x) => x.playerId === t.playerId);
+      return `<div class="pawn ${t.playerId === playerId ? "mine" : ""}" style="left:${t.x}%;top:${t.y}%" title="${esc(t.name)}">${p ? `<img src="${esc(p.portrait)}" alt="" />` : ""}</div>`;
+    })
+    .join("");
+}
+
+function renderChoices(s: RoomState) {
+  const box = $("choices");
+  const puzzleHost = $("puzzleHost");
+  box.innerHTML = "";
+  puzzleHost.innerHTML = "";
+  const choose = (choiceId: string) => {
+    if (storyBusy) return;
+    storyBusy = true;
+    box.querySelectorAll("button").forEach((b) => b.setAttribute("aria-busy", "true"));
+    sfx("uiConfirm");
+    send({ action: "CHOOSE", roomCode: s.roomCode, choiceId });
+    window.setTimeout(() => (storyBusy = false), 2500);
+  };
+  if (puzzleKindForNode(s.nodeId)) {
+    renderInteractivePuzzle(puzzleHost, {
+      nodeId: s.nodeId,
+      progress: s.puzzle,
+      onChoose: choose,
+      onSolve: (sequence) => {
+        sfx("uiConfirm");
+        send({ action: "SOLVE_PUZZLE", roomCode: s.roomCode, sequence });
+      },
+    });
+    return;
   }
-  const map: Record<PageId, string> = {
-    home: "pageHome",
-    lobby: "pageLobby",
-    story: "pageStory",
-    combat: "pageCombat",
-  };
-  $(map[page]).classList.add("active");
-  setMusic(musicFor(page));
-
-  if (page === "home") setBackground(ART.home, "warm");
-  if (page === "lobby") setBackground(ART.lobby, "warm");
-  if (page === "lobby" && !chargenApi) {
-    /* wait for HELLO */
+  if (s.nodeType === "skill_check" && s.skillCheck) {
+    const c = s.skillCheck;
+    const skill = (c.skill ?? c.ability).replace(/_/g, " ").replace(/\b\w/g, (m) => m.toUpperCase());
+    box.innerHTML = `<button type="button" class="choice primary guided" data-choice="attempt" data-autofocus><span class="choice-n">d20</span><span>Roll ${esc(skill)} — difficulty ${c.dc}</span></button>`;
+  } else if (s.nodeId === "END_SAVE" || s.nodeId === "END_WIN") {
+    box.innerHTML = `<button type="button" class="choice primary" id="btnHome" data-autofocus><span class="choice-n">↩</span><span>${s.nodeId === "END_WIN" ? "Return to the title" : "Rest here — return to the title"}</span></button>`;
+    $("btnHome").addEventListener("click", () => {
+      sfx("uiConfirm");
+      if (s.nodeId === "END_WIN") clearSession();
+      state = null;
+      showPage("home");
+    });
+    return;
+  } else if (s.nodeType === "encounter" && !s.combat) {
+    box.innerHTML = `<button type="button" class="choice primary" id="btnRetryFight" data-autofocus><span class="choice-n">⚔</span><span>Face them again</span></button>
+      <button type="button" class="choice" id="btnStepBack"><span class="choice-n">↩</span><span>Step back to safer ground</span></button>`;
+    $("btnRetryFight").addEventListener("click", () => send({ action: "RETRY_COMBAT", roomCode: s.roomCode }));
+    $("btnStepBack").addEventListener("click", () => send({ action: "WITHDRAW", roomCode: s.roomCode }));
+    return;
+  } else {
+    box.innerHTML = s.choices
+      .map(
+        (ch, i) =>
+          `<button type="button" class="choice ${i === 0 ? "primary guided" : ""}" data-choice="${esc(ch.id)}" ${i === 0 ? "data-autofocus" : ""}><span class="choice-n">${i + 1}</span><span>${esc(ch.label)}</span></button>`,
+      )
+      .join("");
   }
+  box.querySelectorAll<HTMLElement>("[data-choice]").forEach((b) => b.addEventListener("click", () => choose(b.dataset.choice!)));
 }
 
-function speak(text: string) {
-  if (!($("tts") as HTMLInputElement).checked) return;
-  if (!text || text === lastSpoken) return;
-  lastSpoken = text;
-  if (!window.speechSynthesis) return;
-  window.speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(text);
-  u.lang = "en-US";
-  u.rate = 1.02;
-  const line = (speechLine += 1);
-  u.onstart = () => {
-    if (line === speechLine) duckMusic(true);
-  };
-  u.onend = u.onerror = () => {
-    if (line === speechLine) duckMusic(false);
-  };
-  window.speechSynthesis.speak(u);
+async function renderStory(s: RoomState) {
+  showPage("story");
+  const scene = sceneForNode(s.nodeId);
+  setScene(scene.art, scene.tone);
+  setMusic(musicFor(s));
+  $("storyChapter").textContent = scene.chapter;
+  $("storyTitle").textContent = scene.title;
+  $("roomMeta").textContent = `Table ${s.roomCode}`;
+  renderSeals();
+  renderMap(s);
+
+  const storyKey = `${s.nodeId}:${s.narrationSeq}`;
+  const fresh = storyKey !== lastStoryKey;
+  lastStoryKey = storyKey;
+  const box = $("narration");
+  const text = s.narration ?? "";
+  if (fresh) {
+    box.innerHTML = sentences(text);
+    box.classList.remove("line-in");
+    void box.offsetWidth;
+    box.classList.add("line-in");
+  }
+
+  const dice = s.lastDice;
+  const diceLine = $("storyDice");
+  if (dice) {
+    const vs = dice.vs ? ` vs ${dice.vs.kind} ${dice.vs.value}` : "";
+    const word = dice.outcome === "success" ? " — success" : dice.outcome === "fail" ? " — failed" : "";
+    diceLine.textContent = `${dice.roller} · ${dice.label ?? dice.purpose}: ${dice.total}${vs}${word}`;
+    diceLine.hidden = false;
+  } else diceLine.hidden = true;
+
+  storyBusy = false;
+  renderChoices(s);
+  prefetchVoice(s.voice);
+  if (!fresh) return;
+
+  if (dice && dice.id !== lastDiceId && isD20(dice) && !resumedFirstState) {
+    lastDiceId = dice.id;
+    box.classList.add("held");
+    await rollD20(dice);
+    box.classList.remove("held");
+  } else if (dice) lastDiceId = dice.id;
+
+  const chapter = chapterOf(scene.chapter);
+  if (chapter && chapter.key !== lastChapterKey) {
+    lastChapterKey = chapter.key;
+    if (!resumedFirstState) await chapterCard(chapter.kicker, chapter.title);
+  }
+  if (state?.nodeId !== s.nodeId || state.narrationSeq !== s.narrationSeq) return;
+  if (s.nodeId === "END_WIN" || s.nodeId === "epilogue") sfx("victory", { jitter: 0, gain: 0.6 });
+  if (/seal/i.test(text) && /Seal of the/i.test(text) && s.seals > 0) sfx("seal", { gain: 0.7 });
+  void speak(s.voice, { interrupt: true });
+}
+
+// ------------------------------------------------------------------ routing
+
+let routing: Promise<void> = Promise.resolve();
+
+function route() {
+  routing = routing.then(routeNow).catch((err) => console.error(err));
+}
+
+async function routeNow() {
+  const s = state;
+  if (!s) return;
+  renderParty();
+  document.body.dataset.room = roomScene(s);
+  const seated = !!playerId && s.players.some((p) => p.playerId === playerId);
+
+  const watching = s.players.length > 0 && (spectating || storyMovedOn(s));
+  if (!seated && !s.combat && page !== "story" && !watching) {
+    showPage("lobby");
+    renderLobby();
+    return;
+  }
+  if (s.combat) {
+    const scene = sceneForNode(s.nodeId);
+    showPage("combat");
+    setScene(scene.art, "ember");
+    setMusic(musicFor(s));
+    $("combatChapter").textContent = scene.chapter;
+    $("combatTitle").textContent = scene.title;
+    if (s.combat.events.some((e) => e.kind === "start") && !resumedFirstState && s.voice) {
+      const intro = s.voice;
+      void speak(intro, { interrupt: true });
+    }
+    await combat.render(s, { resumed: resumedFirstState });
+    resumedFirstState = false;
+    return;
+  }
+  if (page === "combat" && combat.wantsOutro(s)) {
+    const outro = s.combatOutro!;
+    await combat.playOutro(s);
+    void speak(outro.voice, { interrupt: false });
+  }
+  setDefeat(false);
+  await renderStory(s);
+  resumedFirstState = false;
+}
+
+// ------------------------------------------------------------------ connection
+
+function onRoomState(next: RoomState) {
+  state = next;
+  if (next.localPlayerId) playerId = next.localPlayerId;
+  joining = false;
+  pendingRejoin = null;
+  const me = next.players.find((p) => p.playerId === playerId);
+  if (me || next.players.length === 0 || spectating) {
+    saveSession({
+      roomCode: next.roomCode,
+      playerId,
+      hero: me?.characterName,
+      place: sceneForNode(next.nodeId).title,
+      autosaveId: next.autosaveId,
+    });
+  }
+  if (next.autosaveId && lastAutosave && lastAutosave !== `${next.autosaveId}:${next.nodeId}` && !next.combat) {
+    const chip = $("savedChip");
+    chip.hidden = false;
+    chip.classList.remove("show");
+    void chip.offsetWidth;
+    chip.classList.add("show");
+    window.clearTimeout(savedTimer);
+    savedTimer = window.setTimeout(() => (chip.hidden = true), 2600);
+  }
+  lastAutosave = next.autosaveId ? `${next.autosaveId}:${next.nodeId}` : lastAutosave;
+  route();
+}
+
+function onError(code: string, action?: string) {
+  joining = false;
+  if (action === "CREATE_CHARACTER" || action === "ROLL_ABILITIES") chargenApi?.failed();
+  if (action === "REJOIN" || (code === "ROOM_NOT_FOUND" && pendingRejoin)) {
+    const session = pendingRejoin ?? loadSession();
+    pendingRejoin = null;
+    if (session?.autosaveId) {
+      toast("The table was closed — picking up from the last autosave.", "info");
+      resumedFirstState = true;
+      send({ action: "RESUME_SAVE", saveId: session.autosaveId });
+      return;
+    }
+    clearSession();
+    toast("That table is gone and there's no save to return to. Begin a new tale.", "bad");
+    showPage("home");
+    return;
+  }
+  sfx("uiError");
+  toast(describeError(code), "bad");
 }
 
 function connect() {
-  ws = new WebSocket(wsUrl);
+  const proto = location.protocol === "https:" ? "wss" : "ws";
+  ws = new WebSocket(`${proto}://${location.host}/ws`);
+  const conn = $("conn");
   ws.addEventListener("open", () => {
-    $("conn").textContent = "Live · local table";
-    $("conn").classList.remove("bad");
+    reconnectDelay = 800;
+    conn.textContent = "Table live";
+    conn.className = "conn ok";
   });
   ws.addEventListener("close", () => {
-    $("conn").textContent = "Disconnected — retrying…";
-    $("conn").classList.add("bad");
-    setTimeout(connect, 1500);
+    conn.textContent = "Reconnecting…";
+    conn.className = "conn bad";
+    window.setTimeout(connect, reconnectDelay);
+    reconnectDelay = Math.min(8000, reconnectDelay * 1.6);
   });
   ws.addEventListener("message", (ev) => {
-    const msg = JSON.parse(String(ev.data));
-    if (msg.eventType === "HELLO") {
-      pregens = msg.payload.pregens || [];
-      renderPregens();
-      const catalog = msg.payload.chargen as ChargenCatalog | undefined;
-      if (catalog && !chargenApi) {
-        chargenApi = mountChargen({
-          root: $("chargenHost"),
-          catalog,
-          send,
-          onCreated: (id) => {
-            selected = id;
-          },
-        });
-      } else if (catalog && chargenApi) {
-        chargenApi.refresh(catalog);
-      }
-    }
-    if (msg.eventType === "CHARACTER_CREATED") {
-      pregens = msg.payload.pregens || [];
-      renderPregens();
-      const id = msg.payload.character?.id;
-      if (id) {
-        selected = id;
-        const radio = document.querySelector(
-          `input[name="pregen"][value="${id}"]`,
-        ) as HTMLInputElement | null;
-        if (radio) radio.checked = true;
-        err(
-          `Forged ${msg.payload.character.name} — Join to enter the brewery`,
-          "ok",
-        );
-      }
-      chargenApi?.onCreatedClose();
-    }
-    if (msg.eventType === "ABILITY_ROLLS") {
-      chargenApi?.applyRolls(msg.payload.scores || []);
-    }
-    if (msg.eventType === "ROOM_STATE") {
-      state = msg.payload;
-      if (state?.localPlayerId) playerId = state.localPlayerId;
-      if (state?.lastDiceBatch?.length) enqueueDice(state.lastDiceBatch);
-      else if (state?.lastDice?.id) {
-        enqueueDice({ ...state.lastDice, id: state.lastDice.id });
-      }
-      renderGame();
-    }
-    if (msg.eventType === "SAVE_ACK") {
-      err(`Saved as ${msg.payload.saveId}`);
-      ($("saveId") as HTMLInputElement).value = msg.payload.saveId;
-    }
-    if (msg.eventType === "ERROR") err(msg.payload?.code || "Error");
-  });
-}
-
-function renderPregens() {
-  $("pregens").innerHTML = pregens
-    .map(
-      (p) => `
-    <label>
-      <input type="radio" name="pregen" value="${p.id}" ${
-        selected === p.id || (!selected && p.id === pregens[0]?.id) ? "checked" : ""
-      } />
-      <span><strong>${p.name}</strong> — ${p.class} ${p.level}${
-        p.custom ? " · custom" : ""
-      }<br/><span class="meta">${p.summary}</span></span>
-    </label>`,
-    )
-    .join("");
-  if (!selected) selected = pregens[0]?.id ?? null;
-  $("pregens").onchange = (e) => {
-    const t = e.target as HTMLInputElement;
-    if (t.name === "pregen") selected = t.value;
-  };
-}
-
-async function ensurePixi() {
-  if (pixi) return;
-  pixi = new Application();
-  await pixi.init({
-    background: "#15100c",
-    backgroundAlpha: 0.72,
-    resizeTo: $("pixi-host"),
-    antialias: false,
-  });
-  $("pixi-host").appendChild(pixi.canvas);
-  gridLayer = new Container();
-  pixi.stage.addChild(gridLayer);
-  pixi.canvas.addEventListener("pointerdown", (ev) => {
-    const combat = state?.combat;
-    if (!combat || !pixi) return;
-    const rect = pixi.canvas.getBoundingClientRect();
-    if (rect.width < 1 || rect.height < 1) return;
-    const hit = cellAtPoint(
-      pixi.screen.width,
-      pixi.screen.height,
-      combat.width,
-      combat.height,
-      ((ev.clientX - rect.left) * pixi.screen.width) / rect.width,
-      ((ev.clientY - rect.top) * pixi.screen.height) / rect.height,
-    );
-    if (!hit) return;
-    cursor = hit;
-    void drawCombat().then(() => confirmCell());
-  });
-}
-
-function myToken() {
-  return state?.combat?.tokens.find((t) => t.playerId === playerId);
-}
-function isMyTurn() {
-  const c = state?.combat;
-  if (!c) return false;
-  const cur = c.tokens.find((t) => t.id === c.currentTokenId);
-  return !!(cur && cur.playerId === playerId);
-}
-function enemyAt(x: number, y: number) {
-  return state?.combat?.tokens.find(
-    (t) => !t.dead && t.kind === "enemy" && t.x === x && t.y === y,
-  );
-}
-async function drawCombat() {
-  const c = state?.combat;
-  if (!c || !state) return;
-  await ensurePixi();
-  if (!gridLayer || !pixi) return;
-  mountCombatBoard(pixi, gridLayer);
-  const me = myToken();
-  const hit = renderCombatBoard({
-    nodeId: state.nodeId,
-    viewWidth: pixi.screen.width,
-    viewHeight: pixi.screen.height,
-    width: c.width,
-    height: c.height,
-    walls: c.walls,
-    tokens: c.tokens,
-    currentTokenId: c.currentTokenId,
-    reachable: c.reachable || [],
-    cursor,
-    mode,
-    isMyTurn: isMyTurn(),
-    showMelee: !!me?.hasAction,
-    playerId,
-  });
-  if (hit.damaged) audio.hit();
-
-  $("combatLog").textContent = (c.log || []).join("\n");
-  const fightRoom = roomForNode(state.nodeId) ?? "mosaic";
-  const waitingName = c.currentName || "another hero";
-  $("combatHint").textContent = !isMyTurn()
-    ? `Hold — ${waitingName} is acting`
-    : pendingAbility?.needsTarget
-      ? `Aim ${pendingAbility.id.replaceAll("_", " ")} · click the foe or press Enter`
-      : !me?.hasAction && !me?.hasBonusAction
-        ? "Economy spent — End Turn"
-        : "Click a lit cell to step · click a red cell to strike · arrows still aim";
-
-  const flags = c.actionMenu?.flags;
-  $("turnMeta").textContent =
-    `${DUNGEON_ROOMS[fightRoom].label} · ${c.currentName} · ${c.status}` +
-    (isMyTurn()
-      ? ` · move ${me?.movementLeft ?? 0}` +
-        ` · Act ${flags?.hasAction ? "●" : "○"}` +
-        ` · Bonus ${flags?.hasBonusAction ? "●" : "○"}`
-      : "");
-
-  // Room crop of the oneshot map behind the fight grid
-  const host = $("pixi-host");
-  const crop = cropStyle(DUNGEON_ROOMS[fightRoom]);
-  host.style.backgroundImage = "url(/art/dungeon-map.jpg)";
-  host.style.backgroundRepeat = "no-repeat";
-  host.style.backgroundSize = crop.size;
-  host.style.backgroundPosition = crop.position;
-
-  renderPcSheet($("pcSheetHost"), {
-    sheet: c.sheet ?? null,
-    isMyTurn: isMyTurn(),
-    pendingId: pendingAbility?.id,
-    onAction: (a) => {
-      if (a.available === false) {
-        err("Already used this turn");
-        return;
-      }
-      if (a.needsTarget) {
-        mode = "attack";
-        pendingAbility = {
-          id: a.id,
-          needsTarget: true,
-          economy: a.economy,
-        };
-        err(`Click a target for ${a.name}`);
-        void drawCombat();
-        return;
-      }
-      send({
-        action: "PERFORM_ACTION",
-        roomCode: state!.roomCode,
-        playerId,
-        abilityId: a.id,
-      });
-      pendingAbility = null;
-      mode = "move";
-    },
-    onEndTurn: () => {
-      mode = "move";
-      pendingAbility = null;
-      send({ action: "END_TURN", roomCode: state!.roomCode, playerId });
-    },
-  });
-}
-
-function tryAttack(enemy: { id: string }) {
-  const me = myToken() as
-    | { hasAction?: boolean; hasBonusAction?: boolean }
-    | undefined;
-  const abilityId =
-    pendingAbility?.id ||
-    state?.combat?.actionMenu?.actions?.find((a) => a.guided)?.id ||
-    state?.combat?.actions?.find((a) => a.guided)?.id ||
-    state?.combat?.actionMenu?.actions?.find((a) => a.id.includes("attack"))
-      ?.id ||
-    state?.combat?.actions?.find(
-      (a) => a.actionType === "action" || a.economy === "action",
-    )?.id;
-  if (!abilityId) return;
-  const meta =
-    state?.combat?.actions?.find((a) => a.id === abilityId) ||
-    state?.combat?.actionMenu?.actions?.find((a) => a.id === abilityId) ||
-    state?.combat?.actionMenu?.bonusActions?.find((a) => a.id === abilityId);
-  if (meta?.economy === "bonus_action" && me && me.hasBonusAction === false) {
-    err("Bonus already used — End Turn from your sheet");
-    return;
-  }
-  if (meta?.economy !== "bonus_action" && me && me.hasAction === false) {
-    err("Action already used — open sheet and End Turn");
-    return;
-  }
-  send({
-    action: "PERFORM_ACTION",
-    roomCode: state!.roomCode,
-    playerId,
-    abilityId,
-    targetId: enemy.id,
-  });
-  mode = "move";
-  pendingAbility = null;
-}
-
-function confirmCell() {
-  if (!state?.combat || !isMyTurn()) return;
-  if (pendingAbility?.id === "std_help") {
-    const ally = state.combat.tokens.find(
-      (t) => !t.dead && t.kind === "pc" && t.x === cursor.x && t.y === cursor.y,
-    );
-    if (!ally) {
-      err("Help needs an adjacent ally cell");
+    let msg: { eventType: string; payload: any };
+    try {
+      msg = JSON.parse(String(ev.data));
+    } catch {
       return;
     }
-    send({
-      action: "PERFORM_ACTION",
-      roomCode: state.roomCode,
-      playerId,
-      abilityId: "std_help",
-      targetId: ally.id,
-    });
-    pendingAbility = null;
-    mode = "move";
-    return;
-  }
-  const enemy = enemyAt(cursor.x, cursor.y);
-  if (enemy) {
-    tryAttack(enemy);
-    return;
-  }
-  if (mode === "attack" || pendingAbility?.needsTarget) {
-    err("No valid target here");
-    return;
-  }
-  const ok = (state.combat.reachable || []).some(
-    (c) => c.x === cursor.x && c.y === cursor.y,
-  );
-  if (!ok) {
-    err("Unreachable");
-    return;
-  }
-  send({
-    action: "PROPOSE_MOVE",
-    roomCode: state.roomCode,
-    playerId,
-    x: cursor.x,
-    y: cursor.y,
+    switch (msg.eventType) {
+      case "HELLO": {
+        pregens = msg.payload.pregens ?? [];
+        portraits = msg.payload.portraits ?? [];
+        const catalog = msg.payload.chargen as ChargenCatalog | undefined;
+        if (catalog && !chargenApi) {
+          chargenApi = mountChargen({ root: $("chargenHost"), catalog, portraits, send, onCreated: (id) => (selectedHero = id) });
+        } else if (catalog) chargenApi?.refresh(catalog);
+        if (page === "lobby") renderLobby();
+        const session = loadSession();
+        if (state?.roomCode) {
+          resumedFirstState = true;
+          send({ action: "REJOIN", roomCode: state.roomCode, playerId: playerId ?? undefined });
+        } else if (session && page === "home") {
+          renderHome();
+        }
+        break;
+      }
+      case "SEAT":
+        if (msg.payload.playerId) playerId = msg.payload.playerId;
+        break;
+      case "ROOM_STATE":
+        onRoomState(msg.payload as RoomState);
+        break;
+      case "CHARACTER_CREATED": {
+        pregens = msg.payload.pregens ?? pregens;
+        const hero = msg.payload.character;
+        if (hero?.id) selectedHero = hero.id;
+        chargenApi?.onCreatedClose();
+        renderLobby();
+        requestAnimationFrame(() => $("heroGrid").querySelector<HTMLElement>(`[data-hero="${CSS.escape(hero?.id ?? "")}"]`)?.focus());
+        sfx("seal", { gain: 0.6 });
+        toast(`${hero?.name ?? "Your hero"} is ready. Press OK on the card to begin.`, "ok");
+        break;
+      }
+      case "ABILITY_ROLLS":
+        chargenApi?.applyRolls(msg.payload.scores ?? []);
+        break;
+      case "SAVE_ACK":
+        toast(`Saved. Code: ${msg.payload.saveId}`, "ok");
+        break;
+      case "ERROR":
+        onError(msg.payload?.code, msg.payload?.action);
+        break;
+      default:
+        break;
+    }
   });
 }
 
-function renderGame() {
-  if (!state) return;
+// ------------------------------------------------------------------ remote
 
-  const scene = sceneForNode(state.nodeId);
-  const roomScene: RoomScene = state.combat
-    ? /spider|magma/i.test(scene.title)
-      ? "boss"
-      : "combat"
-    : normalizeScene(state.alexaScene, scene.tone === "victory" ? "victory" : scene.tone === "warm" ? "tavern" : "explore");
-  setHouse(state.combat ? roomScene : state.alexaScene, roomScene);
-  renderParty();
-  const seals = (state.flags || []).filter((f) =>
-    ["seal_cellar", "seal_well", "seal_store"].includes(f),
-  );
-  const sealLabel = [
-    seals.includes("seal_cellar") ? "Cellar" : null,
-    seals.includes("seal_well") ? "Well" : null,
-    seals.includes("seal_store") ? "Store" : null,
-  ]
-    .filter(Boolean)
-    .join(" · ");
-  $("roomMeta").textContent =
-    `Room ${state.roomCode}${playerId ? ` · seat ${playerId}` : ""} · ${(state.players || [])
-      .map((p) => p.characterName)
-      .join(", ") || "waiting"}` +
-    (sealLabel ? ` · Seals: ${sealLabel}` : " · Seals: —");
-
-  if (state.combat) {
-    wasCombat = true;
-    showPage("combat");
-    setBackground(scene.art, scene.tone);
-    $("combatChapter").textContent = scene.chapter;
-    $("combatTitle").textContent = scene.title;
-    const turnId = state.combat.currentTokenId ?? "";
-    if (turnId && turnId !== lastTurnId) {
-      lastTurnId = turnId;
-      slamTurn(state.combat.currentName || "The table");
-    }
-    void drawCombat();
-    const retreat = $("btnRetreat");
-    retreat.hidden = state.combat.status === "active";
-    retreat.onclick = () =>
-      send({ action: "WITHDRAW", roomCode: state!.roomCode, playerId });
-    $("pixi-host").focus();
-    return;
+function handleBack(): boolean {
+  if (settingsOpen()) {
+    closeSettings();
+    return true;
   }
-
-  if (wasCombat) {
-    wasCombat = false;
-    lastTurnId = "";
-    resetCombatBoard();
+  const cg = document.querySelector(".chargen-panel.is-open");
+  if (cg) {
+    chargenApi?.back();
+    return true;
   }
-
-  if (state.nodeType === "encounter") {
-    showPage("story");
-    setBackground(scene.art, scene.tone);
-    $("storyTitle").textContent = scene.title;
-    $("narration").textContent =
-      state.narration || "The fight did not start. Step back and try again.";
-    const box = $("choices");
-    box.innerHTML = "";
-    const b = document.createElement("button");
-    b.className = "primary";
-    b.textContent = "Step back — the puzzle is still open";
-    b.onclick = () =>
-      send({ action: "WITHDRAW", roomCode: state!.roomCode, playerId });
-    box.appendChild(b);
-    return;
+  if (page === "lobby") {
+    spectating = false;
+    sfx("uiBack");
+    showPage("home");
+    return true;
   }
-
-  if (!state.players?.length) {
-    showPage("lobby");
-    setBackground(ART.lobby, "warm");
-    err(`Room ${state.roomCode} ready — pick a character and Join`, "ok");
-    ($("joinCode") as HTMLInputElement).value = state.roomCode;
-    return;
+  if (page === "story" && state && puzzleBack(state.nodeId)) {
+    sfx("uiBack");
+    renderChoices(state);
+    return true;
   }
-
-  showPage("story");
-  setBackground(scene.art, scene.tone);
-  $("storyChapter").textContent = scene.chapter;
-  $("storyTitle").textContent = scene.title;
-
-  const text = state.narration || "";
-  const narration = $("narration");
-  if (narration.textContent !== text) {
-    narration.textContent = text;
-    narration.classList.remove("line-in");
-    void narration.offsetWidth;
-    narration.classList.add("line-in");
+  if (page === "story" || page === "home") {
+    stopNarration();
+    return true;
   }
-  speak(text);
-  $("dice").textContent = state.lastDice
-    ? `${state.lastDice.roller}: ${state.lastDice.notation} = ${state.lastDice.total}`
-    : state.puzzle
-      ? `Puzzle progress ${state.puzzle.picked.length}/${state.puzzle.need}${
-          state.puzzle.fails ? ` · faults ${state.puzzle.fails}` : ""
-        }`
-      : "";
-
-  const mapWrap = $("dungeonMapWrap");
-  const area = state.currentRoom ?? roomForNode(state.nodeId);
-  const showMap = !!area || (state.visitedRooms?.length ?? 0) > 0;
-  mapWrap.hidden = !showMap || !area && !(state.visitedRooms?.length);
-  if (showMap && (area || state.visitedRooms?.length)) {
-    const visited = new Set(state.visitedRooms ?? []);
-    const fog = $("fogMask");
-    fog.innerHTML = (Object.keys(DUNGEON_ROOMS) as DungeonRoomId[])
-      .map((id) => {
-        const open = visited.has(id);
-        const here = id === area;
-        return `<div class="fog ${open ? "revealed" : ""} ${here ? "here" : ""}" data-room="${id}" data-label="${open ? DUNGEON_ROOMS[id].label : "???"}"></div>`;
-      })
-      .join("");
-    const colors = ["#4a8fd4", "#e8c040", "#6a9f5a"];
-    const tokens = $("mapTokens");
-    tokens.innerHTML = (state.mapTokens ?? [])
-      .filter((t) => visited.has(t.room))
-      .map((t, i) => {
-        const mine = t.playerId === playerId;
-        return `<div class="pawn ${mine ? "mine" : ""}" style="left:${t.x}%;top:${t.y}%;--pawn:${colors[i % colors.length]}" title="${t.name}">
-          <span class="pawn-disc">${t.name.slice(0, 1)}</span>
-          <span class="pawn-name">${t.name.split(" ")[0]}</span>
-        </div>`;
-      })
-      .join("");
-    const img = $("dungeonMap") as HTMLImageElement;
-    const caption = $("mapCaption");
-    caption.hidden = false;
-    caption.textContent = area
-      ? `${DUNGEON_ROOMS[area].label} — click inside this room to move your pawn. Unvisited rooms stay dark.`
-      : "Rooms you have entered stay open.";
-    img.onclick = (ev) => {
-      if (!area || !playerId) return;
-      const rect = img.getBoundingClientRect();
-      const x = ((ev.clientX - rect.left) / rect.width) * 100;
-      const y = ((ev.clientY - rect.top) / rect.height) * 100;
-      const region = DUNGEON_ROOMS[area];
-      const inside =
-        x >= region.left &&
-        x <= region.left + region.width &&
-        y >= region.top &&
-        y <= region.top + region.height;
-      if (!inside) {
-        err("You can only walk inside the room you are in.");
-        return;
-      }
-      send({
-        action: "MAP_MOVE",
-        roomCode: state!.roomCode,
-        playerId,
-        mapX: x,
-        mapY: y,
-      });
-    };
-  }
-
-  const box = $("choices");
-  box.innerHTML = "";
-  const puzzleHost = $("puzzleHost");
-  puzzleHost.innerHTML = "";
-
-  if (state.nodeType === "puzzle" || puzzleKindForNode(state.nodeId)) {
-    const interactive = renderInteractivePuzzle(puzzleHost, {
-      nodeId: state.nodeId,
-      narration: text,
-      progress: state.puzzle,
-      roomCode: state.roomCode,
-      send,
-      onChoose: (choiceId) =>
-        send({ action: "CHOOSE", roomCode: state!.roomCode, choiceId }),
-    });
-    if (!interactive) {
-      (state.choices || []).forEach((ch) => {
-        const b = document.createElement("button");
-        b.textContent = ch.label;
-        b.onclick = () =>
-          send({ action: "CHOOSE", roomCode: state!.roomCode, choiceId: ch.id });
-        box.appendChild(b);
-      });
-    }
-    return;
-  }
-  if (state.nodeType === "skill_check") {
-    const c = state.skillCheck!;
-    const b = document.createElement("button");
-    b.className = "primary guided";
-    b.textContent = `Attempt ${c.skill || c.ability} (DC ${c.dc}) ★`;
-    b.onclick = () =>
-      send({
-        action: "CHOOSE",
-        roomCode: state!.roomCode,
-        choiceId: "attempt",
-      });
-    box.appendChild(b);
-    return;
-  }
-  if (state.nodeId === "END_SAVE" || state.nodeId === "END_WIN") {
-    const b = document.createElement("button");
-    b.className = "primary";
-    b.textContent =
-      state.nodeId === "END_WIN" ? "Return home" : "Save noted — return home";
-    b.onclick = () => {
-      state = null;
-      showPage("home");
-    };
-    box.appendChild(b);
-    return;
-  }
-  (state.choices || []).forEach((ch, i) => {
-    const b = document.createElement("button");
-    b.className = i === 0 ? "primary guided" : "";
-    b.textContent = `${i + 1}. ${ch.label}${i === 0 ? " ★" : ""}`;
-    b.onclick = () =>
-      send({ action: "CHOOSE", roomCode: state!.roomCode, choiceId: ch.id });
-    box.appendChild(b);
-  });
+  return false;
 }
 
 window.addEventListener("keydown", (e) => {
-  audio.unlock();
-  const typing = e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement;
-  if (!typing && (e.key === "m" || e.key === "M") && !e.ctrlKey && !e.metaKey && !e.altKey) {
-    e.preventDefault();
-    toggleMusic();
-    return;
-  }
-  if (currentPage === "home" && (e.key === "Enter" || e.key === "ArrowRight")) {
-    e.preventDefault();
-    ($("btnEnter") as HTMLButtonElement).click();
-    return;
-  }
-  if (currentPage === "lobby" && (e.key === "ArrowDown" || e.key === "ArrowUp")) {
-    e.preventDefault();
-    moveFocus(e.key === "ArrowDown" ? 1 : -1, "#pageLobby");
-    return;
-  }
-  if (currentPage === "story" && !state?.combat) {
-    if (e.key >= "1" && e.key <= "9" && state?.choices?.length) {
-      const idx = Number(e.key) - 1;
-      const ch = state.choices[idx];
-      if (ch)
-        send({ action: "CHOOSE", roomCode: state.roomCode, choiceId: ch.id });
+  unlockAudio();
+  const key = remoteKey(e);
+  const target = e.target as HTMLElement;
+  const typing = target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement;
+  if (!key) {
+    if (!typing && (e.key === "m" || e.key === "M")) toggleMusic();
+    if (!typing && page === "story" && /^[1-9]$/.test(e.key)) {
+      const b = $("choices").querySelectorAll<HTMLElement>("[data-choice]")[Number(e.key) - 1];
+      b?.click();
     }
-    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+    if (!typing && (e.key === "s" || e.key === "S")) openSettings();
+    return;
+  }
+  if (typing && key === "back" && e.key === "Backspace") return;
+  if (key === "menu") {
+    e.preventDefault();
+    if (settingsOpen()) closeSettings();
+    else openSettings();
+    return;
+  }
+  if (!settingsOpen() && page === "combat" && !document.querySelector(".modal:not([hidden])") && combat.handleKey(key)) {
+    e.preventDefault();
+    return;
+  }
+  switch (key) {
+    case "back":
+      if (handleBack()) e.preventDefault();
+      return;
+    case "play":
       e.preventDefault();
-      moveFocus(e.key === "ArrowDown" ? 1 : -1, "#pageStory");
+      replayNarration();
+      return;
+    case "rew":
+    case "ff":
+      return;
+    case "ok":
+      if (target instanceof HTMLButtonElement) sfx("uiMove", { gain: 0.001 });
+      return;
+    case "up":
+    case "down":
+    case "left":
+    case "right":
+      if (ownsArrows(target, key)) return;
+      e.preventDefault();
+      moveFocus(key);
+      return;
+    default: {
+      const exhaustive: never = key as never;
+      void exhaustive;
     }
-    return;
-  }
-  if (currentPage !== "combat" || !state?.combat) return;
-  const map: Record<string, [number, number]> = {
-    ArrowLeft: [-1, 0],
-    ArrowRight: [1, 0],
-    ArrowUp: [0, -1],
-    ArrowDown: [0, 1],
-  };
-  if (map[e.key]) {
-    e.preventDefault();
-    cursor.x += map[e.key][0];
-    cursor.y += map[e.key][1];
-    cursor.x = Math.max(0, Math.min((state.combat?.width ?? 1) - 1, cursor.x));
-    cursor.y = Math.max(0, Math.min((state.combat?.height ?? 1) - 1, cursor.y));
-    void drawCombat();
-  } else if (e.key === "Enter") {
-    e.preventDefault();
-    confirmCell();
-  } else if (e.key === "Escape") {
-    mode = "move";
-    pendingAbility = null;
-    err();
-    void drawCombat();
   }
 });
+window.addEventListener("pointerdown", () => unlockAudio());
 
-$("btnEnter").onclick = () => {
-  err();
-  showPage("lobby");
-};
-$("btnBackHome").onclick = () => {
-  err();
-  showPage("home");
-};
-$("btnHomeResume").onclick = () => {
-  showPage("lobby");
-  ($("saveId") as HTMLInputElement).focus();
-};
-$("btnCreate").onclick = () => {
-  err();
-  send({ action: "CREATE_ROOM" });
-};
-$("btnJoin").onclick = () => {
-  err();
-  const roomCode = (
-    ($("joinCode") as HTMLInputElement).value ||
-    state?.roomCode ||
-    ""
-  ).toUpperCase();
-  if (!roomCode || !selected) return err("Room code + character required");
-  send({
-    action: "JOIN_ROOM",
-    roomCode,
-    displayName: ($("displayName") as HTMLInputElement).value || "Player",
-    characterId: selected,
-  });
-  ($("joinCode") as HTMLInputElement).value = roomCode;
-};
-function requestSave() {
-  if (!state?.roomCode) return;
-  send({ action: "REQUEST_SAVE", roomCode: state.roomCode });
-}
-$("btnSave").onclick = requestSave;
-$("btnSaveCombat").onclick = requestSave;
-$("btnResume").onclick = () => {
-  const saveId = ($("saveId") as HTMLInputElement).value.trim();
-  if (!saveId) return err("Need save id");
-  send({ action: "RESUME_SAVE", saveId });
-};
-
-setBackground(ART.home, "warm");
-setHouse("tavern", "tavern");
-let music: MusicState | null = null;
-$("musicToggle").onclick = () => {
-  audio.unlock();
-  if (music?.enabled && !music.playing) return;
-  toggleMusic();
-};
 onMusicChange((m) => {
-  music = m;
-  const button = $("musicToggle");
-  button.setAttribute("aria-pressed", String(m.enabled));
-  button.classList.toggle("off", !m.enabled);
-  button.classList.toggle("live", m.enabled && m.playing);
-  $("musicKicker").textContent = m.enabled ? "Music" : "Music · muted";
+  const el = $("nowPlaying");
+  el.classList.toggle("off", !m.enabled);
+  el.classList.toggle("live", m.enabled && m.playing);
+  $("musicKicker").textContent = m.enabled ? "Now playing" : "Music muted";
   $("musicTitle").textContent = m.title;
 });
-onDiceCue((roll) => {
-  if (roll.isCrit) audio.fanfare();
-  else if (roll.isFumble) audio.fumble();
-  else audio.dice();
-});
-window.addEventListener("pointerdown", () => audio.unlock());
+
+void (sceneLabel satisfies (s: RoomScene) => string);
+void ({} as RemoteKey);
+
+setScene(ART.home, "warm");
+renderHome();
+requestAnimationFrame(() => restoreFocus());
 connect();
+
+if (import.meta.env.DEV) {
+  (window as unknown as { __table: object }).__table = { isNarrating, page: () => page };
+}

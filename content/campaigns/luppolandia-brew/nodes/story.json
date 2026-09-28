@@ -7,9 +7,21 @@
       "text": "In Luppolandia, a notice is nailed to the tavern door. It smells of hops and fresh ink: Wanted — brave (or desperate) heroes. Black rats the size of dogs in the cellar. Good pay, free beer. Ask Glowkindle — The Wizard's Tower Brewing Co."
     },
     "choices": [
-      { "id": "go_money", "label": "Take the job for the gold", "next": "glowkindle" },
-      { "id": "go_beer", "label": "Go — the Tashalar Pale Ale has vanished from every tap", "next": "glowkindle" },
-      { "id": "go_rumor", "label": "Ask around first (rumors)", "next": "hook_rumor" }
+      {
+        "id": "go_money",
+        "label": "Take the job for the gold",
+        "next": "glowkindle"
+      },
+      {
+        "id": "go_beer",
+        "label": "Go — the Tashalar Pale Ale has vanished from every tap",
+        "next": "glowkindle"
+      },
+      {
+        "id": "go_rumor",
+        "label": "Ask around first (rumors)",
+        "next": "hook_rumor"
+      }
     ]
   },
   "hook_rumor": {
@@ -19,7 +31,13 @@
     "narration": {
       "text": "A messenger shrugs. Glowkindle pays well, but he says the rats down there watch you. I wouldn't go sober — and I've lived in Luppolandia forever."
     },
-    "choices": [{ "id": "continue", "label": "Climb the hill to the brewery", "next": "glowkindle" }]
+    "choices": [
+      {
+        "id": "continue",
+        "label": "Climb the hill to the brewery",
+        "next": "glowkindle"
+      }
+    ]
   },
   "glowkindle": {
     "id": "glowkindle",
@@ -33,9 +51,15 @@
         "id": "accept",
         "label": "Accept the vague mission (75 gp each)",
         "next": "descend",
-        "flagsSet": ["job_accepted"]
+        "flagsSet": [
+          "job_accepted"
+        ]
       },
-      { "id": "ask_under", "label": "Ask what lies beneath", "next": "glowkindle_ask" }
+      {
+        "id": "ask_under",
+        "label": "Ask what lies beneath",
+        "next": "glowkindle_ask"
+      }
     ]
   },
   "glowkindle_ask": {
@@ -50,7 +74,9 @@
         "id": "accept",
         "label": "Take the job — open the trapdoor",
         "next": "descend",
-        "flagsSet": ["job_accepted"]
+        "flagsSet": [
+          "job_accepted"
+        ]
       }
     ]
   },
@@ -61,7 +87,13 @@
     "narration": {
       "text": "Behind the bar, Glowkindle lifts a jute rug and a hidden trapdoor. Stone stairs sink into a buried wizard's tower. Dust. Cold. He stays above. If you hear something… don't call me. Or do. I don't know. Go."
     },
-    "choices": [{ "id": "down", "label": "Descend into the dark", "next": "corridor_arrive" }]
+    "choices": [
+      {
+        "id": "down",
+        "label": "Descend into the dark",
+        "next": "corridor_arrive"
+      }
+    ]
   },
   "corridor_arrive": {
     "id": "corridor_arrive",
@@ -70,7 +102,13 @@
     "narration": {
       "text": "A dusty stone corridor opens beyond the stairs. Footsteps echo a breath too late. A mosaic of colored tiles covers the runner like a cursed chessboard. Side doors lead into dark. At the far end: a heavy iron door with three empty sockets. Beside the jamb, a hole in the floor breathes warm air — something has been climbing out to hunt."
     },
-    "choices": [{ "id": "hub", "label": "Take in the mosaic hub", "next": "corridor_hub" }]
+    "choices": [
+      {
+        "id": "hub",
+        "label": "Take in the mosaic hub",
+        "next": "corridor_hub"
+      }
+    ]
   },
   "corridor_hub": {
     "id": "corridor_hub",
@@ -90,25 +128,51 @@
     },
     "puzzle": {
       "kind": "sequence",
-      "solution": ["violet", "slate", "black", "fire"],
+      "solution": [
+        "violet",
+        "slate",
+        "black",
+        "fire"
+      ],
       "options": [
-        { "id": "violet", "label": "Violet tile" },
-        { "id": "slate", "label": "Slate / grey tile" },
-        { "id": "black", "label": "Black tile" },
-        { "id": "fire", "label": "Fire / red tile" },
-        { "id": "green", "label": "Green tile (decoy)" },
-        { "id": "gold", "label": "Gold tile (decoy)" }
+        {
+          "id": "violet",
+          "label": "Violet tile"
+        },
+        {
+          "id": "slate",
+          "label": "Slate / grey tile"
+        },
+        {
+          "id": "black",
+          "label": "Black tile"
+        },
+        {
+          "id": "fire",
+          "label": "Fire / red tile"
+        },
+        {
+          "id": "green",
+          "label": "Green tile (decoy)"
+        },
+        {
+          "id": "gold",
+          "label": "Gold tile (decoy)"
+        }
       ],
       "hint": "Order: Violet → Grey → Black → Red.",
       "maxFailsBeforePenalty": 2,
-      "resetOnFail": true
+      "resetOnFail": true,
+      "nudge": "Read each line of the poem as a single color, top to bottom. Amethyst is a stone, not a mood."
     },
     "onSuccess": {
       "narration": {
         "text": "Four lights bloom on the mosaic. The corridor feels open as a true hub. No seal — only passage."
       },
       "next": "corridor_hub",
-      "flagsSet": ["tiles_done"]
+      "flagsSet": [
+        "tiles_done"
+      ]
     },
     "onFailure": {
       "narration": {
@@ -120,7 +184,11 @@
           "type": "saving_throw",
           "ability": "dex",
           "dc": 14,
-          "damage": { "dice": "2d10", "type": "slashing", "halfOnSuccess": true },
+          "damage": {
+            "dice": "2d10",
+            "type": "slashing",
+            "halfOnSuccess": true
+          },
           "targets": "all_pcs"
         }
       ]
@@ -138,7 +206,9 @@
         "id": "ok",
         "label": "Return to the corridor hub",
         "next": "corridor_hub",
-        "flagsSet": ["tiles_done"]
+        "flagsSet": [
+          "tiles_done"
+        ]
       }
     ]
   },
@@ -149,9 +219,14 @@
     "narration": {
       "text": "Three empty seal sockets stare from the iron door. Cold to the touch. The hole beside the jamb exhales warm, foul air — proof the source lies beyond. You need the Cellar, Well, and Store seals."
     },
-    "choices": [{ "id": "back", "label": "Step back to the hub", "next": "corridor_hub" }]
+    "choices": [
+      {
+        "id": "back",
+        "label": "Step back to the hub",
+        "next": "corridor_hub"
+      }
+    ]
   },
-
   "cellar_enter": {
     "id": "cellar_enter",
     "type": "story",
@@ -159,7 +234,13 @@
     "narration": {
       "text": "The Cellar smells of old oak and animal musk. Barrels crowd the walls. Something moves behind them — not one rat. A pack holding its breath. Niches wait with carved vessel marks: Eye, X, Wave, Spiral."
     },
-    "choices": [{ "id": "fight", "label": "Draw steel — clear the pack", "next": "fight_cellar_rats" }]
+    "choices": [
+      {
+        "id": "fight",
+        "label": "Draw steel — clear the pack",
+        "next": "fight_cellar_rats"
+      }
+    ]
   },
   "fight_cellar_rats": {
     "id": "fight_cellar_rats",
@@ -176,42 +257,67 @@
     },
     "puzzle": {
       "kind": "sequence",
-      "solution": ["eye", "x", "wave", "spiral"],
+      "solution": [
+        "eye",
+        "x",
+        "wave",
+        "spiral"
+      ],
       "options": [
-        { "id": "eye", "label": "Eye" },
-        { "id": "x", "label": "X" },
-        { "id": "wave", "label": "Wave" },
-        { "id": "spiral", "label": "Spiral" }
+        {
+          "id": "eye",
+          "label": "Eye"
+        },
+        {
+          "id": "x",
+          "label": "X"
+        },
+        {
+          "id": "wave",
+          "label": "Wave"
+        },
+        {
+          "id": "spiral",
+          "label": "Spiral"
+        }
       ],
       "hint": "True order: Eye → X → Wave → Spiral.",
       "maxFailsBeforePenalty": 2,
-      "resetOnFail": true
+      "resetOnFail": true,
+      "nudge": "Start from the X: it can stand neither first nor last. Then remember the Wave always drags the Spiral right behind it."
     },
     "onSuccess": {
       "narration": {
         "text": "The Eye niche vibrates. A stone slab detaches with a dull crack — the Seal of the Cellar."
       },
       "next": "corridor_hub",
-      "flagsSet": ["seal_cellar"]
+      "flagsSet": [
+        "seal_cellar"
+      ]
     },
     "onFailure": {
       "narration": {
         "text": "Wrong order. Heat blooms from the sockets — fire washes the hall (Dexterity save DC 13, 2d8 fire). You jam a crowbar and force the slab free: Seal of the Cellar, scorched but yours."
       },
       "next": "corridor_hub",
-      "flagsSet": ["seal_cellar"],
+      "flagsSet": [
+        "seal_cellar"
+      ],
       "effects": [
         {
           "type": "saving_throw",
           "ability": "dex",
           "dc": 13,
-          "damage": { "dice": "2d8", "type": "fire", "halfOnSuccess": true },
+          "damage": {
+            "dice": "2d8",
+            "type": "fire",
+            "halfOnSuccess": true
+          },
           "targets": "all_pcs"
         }
       ]
     }
   },
-
   "well_enter": {
     "id": "well_enter",
     "type": "story",
@@ -219,7 +325,13 @@
     "narration": {
       "text": "A stone well with a rotten rope and pulley. Daylight leaks from a ceiling crack and snuffs torches as if it hates them. Two carvings on the rim: one lists four lock marks; the other reads — The weight that sinks to the bottom breaks the seal of the deep."
     },
-    "choices": [{ "id": "lock", "label": "Work the pulley lock (Console marks)", "next": "well_lock" }]
+    "choices": [
+      {
+        "id": "lock",
+        "label": "Work the pulley lock (Console marks)",
+        "next": "well_lock"
+      }
+    ]
   },
   "well_lock": {
     "id": "well_lock",
@@ -230,21 +342,47 @@
     },
     "puzzle": {
       "kind": "sequence",
-      "solution": ["tooth", "spark", "moon", "wave"],
+      "solution": [
+        "tooth",
+        "spark",
+        "moon",
+        "wave"
+      ],
       "options": [
-        { "id": "tooth", "label": "△ Tooth / what bites" },
-        { "id": "spark", "label": "✦ Spark / fallen star" },
-        { "id": "moon", "label": "○ Moon / night eye" },
-        { "id": "wave", "label": "☰ Wave / formless flow" },
-        { "id": "sun", "label": "☀ Sun (decoy)" },
-        { "id": "skull", "label": "☠ Skull (decoy)" }
+        {
+          "id": "tooth",
+          "label": "△ Tooth / what bites"
+        },
+        {
+          "id": "spark",
+          "label": "✦ Spark / fallen star"
+        },
+        {
+          "id": "moon",
+          "label": "○ Moon / night eye"
+        },
+        {
+          "id": "wave",
+          "label": "☰ Wave / formless flow"
+        },
+        {
+          "id": "sun",
+          "label": "☀ Sun (decoy)"
+        },
+        {
+          "id": "skull",
+          "label": "☠ Skull (decoy)"
+        }
       ],
       "hint": "Order: Tooth → Spark → Moon → Wave.",
       "maxFailsBeforePenalty": 2,
-      "resetOnFail": true
+      "resetOnFail": true,
+      "nudge": "Think of what gnaws through rope, what falls burning from the sky, what watches over the night, and what flows without a shape."
     },
     "onSuccess": {
-      "narration": { "text": "The lock clicks. The pulley runs free. Lower the bucket to claim the seal." },
+      "narration": {
+        "text": "The lock clicks. The pulley runs free. Lower the bucket to claim the seal."
+      },
       "next": "well_bucket"
     },
     "onFailure": {
@@ -272,11 +410,12 @@
         "id": "take",
         "label": "Take the Seal of the Well and return",
         "next": "corridor_hub",
-        "flagsSet": ["seal_well"]
+        "flagsSet": [
+          "seal_well"
+        ]
       }
     ]
   },
-
   "store_enter": {
     "id": "store_enter",
     "type": "story",
@@ -284,7 +423,13 @@
     "narration": {
       "text": "A narrow alchemical store of the tower: shelves of unbroken glass, green, amber, black vials like glass eyes. Tiny rat prints in the dust. On the bench: a wizard's note and three empty basins for an interrupted ritual. No vault here — the Door of Three Seals is on the Laboratory."
     },
-    "choices": [{ "id": "vials", "label": "Solve the four vials (Phase A)", "next": "store_vials" }]
+    "choices": [
+      {
+        "id": "vials",
+        "label": "Solve the four vials (Phase A)",
+        "next": "store_vials"
+      }
+    ]
   },
   "store_vials": {
     "id": "store_vials",
@@ -295,19 +440,39 @@
     },
     "puzzle": {
       "kind": "sequence",
-      "solution": ["heal", "invis", "vit", "heal"],
+      "solution": [
+        "heal",
+        "invis",
+        "vit",
+        "heal"
+      ],
       "options": [
-        { "id": "heal", "label": "Healing (G)" },
-        { "id": "invis", "label": "Invisibility" },
-        { "id": "vit", "label": "Vitality" },
-        { "id": "poison", "label": "Poison (decoy)" }
+        {
+          "id": "heal",
+          "label": "Healing (G)"
+        },
+        {
+          "id": "invis",
+          "label": "Invisibility"
+        },
+        {
+          "id": "vit",
+          "label": "Vitality"
+        },
+        {
+          "id": "poison",
+          "label": "Poison (decoy)"
+        }
       ],
       "hint": "Place α→δ: Healing, Invisibility, Vitality, Healing.",
       "maxFailsBeforePenalty": 2,
-      "resetOnFail": true
+      "resetOnFail": true,
+      "nudge": "Invisibility and Vitality travel as a pair. Place them first, then keep the two Healing vials apart."
     },
     "onSuccess": {
-      "narration": { "text": "The vials lock into place with a soft chime. The basins awaken for Phase B — the Residue Mixture." },
+      "narration": {
+        "text": "The vials lock into place with a soft chime. The basins awaken for Phase B — the Residue Mixture."
+      },
       "next": "store_mixture"
     },
     "onFailure": {
@@ -320,7 +485,11 @@
           "type": "saving_throw",
           "ability": "dex",
           "dc": 13,
-          "damage": { "dice": "2d8", "type": "acid", "halfOnSuccess": true },
+          "damage": {
+            "dice": "2d8",
+            "type": "acid",
+            "halfOnSuccess": true
+          },
           "targets": "all_pcs"
         }
       ]
@@ -335,44 +504,74 @@
     },
     "puzzle": {
       "kind": "sequence",
-      "solution": ["moon_dust", "black_salt", "stone_oil"],
+      "solution": [
+        "moon_dust",
+        "black_salt",
+        "stone_oil"
+      ],
       "options": [
-        { "id": "moon_dust", "label": "Powder of the pale sky-disk" },
-        { "id": "black_salt", "label": "Black crystal against spirits" },
-        { "id": "stone_oil", "label": "Grease of the deep rock" },
-        { "id": "hop_ash", "label": "Ash of bitter flowers (decoy)" },
-        { "id": "quicklime", "label": "White fire-dust (decoy)" },
-        { "id": "mercury", "label": "Living silver (decoy)" }
+        {
+          "id": "moon_dust",
+          "label": "Powder of the pale sky-disk"
+        },
+        {
+          "id": "black_salt",
+          "label": "Black crystal against spirits"
+        },
+        {
+          "id": "stone_oil",
+          "label": "Grease of the deep rock"
+        },
+        {
+          "id": "hop_ash",
+          "label": "Ash of bitter flowers (decoy)"
+        },
+        {
+          "id": "quicklime",
+          "label": "White fire-dust (decoy)"
+        },
+        {
+          "id": "mercury",
+          "label": "Living silver (decoy)"
+        }
       ],
       "hint": "True mixture: Moon Dust → Black Salt → Stone Oil.",
       "maxFailsBeforePenalty": 2,
-      "resetOnFail": true
+      "resetOnFail": true,
+      "nudge": "A sunless sky belongs to the moon. Spirits fear a black salt. And the slabs want an oil pressed from deep rock."
     },
     "onSuccess": {
       "narration": {
         "text": "The mixture settles. From the basin floor rises a slab — the Seal of the Residue."
       },
       "next": "corridor_hub",
-      "flagsSet": ["seal_store"]
+      "flagsSet": [
+        "seal_store"
+      ]
     },
     "onFailure": {
       "narration": {
         "text": "Wrong reagents flash — a catalyst bloom of fire and acid. You smother it and scrape the Seal of the Residue free."
       },
       "next": "corridor_hub",
-      "flagsSet": ["seal_store"],
+      "flagsSet": [
+        "seal_store"
+      ],
       "effects": [
         {
           "type": "saving_throw",
           "ability": "dex",
           "dc": 13,
-          "damage": { "dice": "2d8", "type": "fire", "halfOnSuccess": true },
+          "damage": {
+            "dice": "2d8",
+            "type": "fire",
+            "halfOnSuccess": true
+          },
           "targets": "all_pcs"
         }
       ]
     }
   },
-
   "hole_rats": {
     "id": "hole_rats",
     "type": "encounter",
@@ -386,7 +585,13 @@
     "narration": {
       "text": "The threshold hole spat two giant rats — an omen. The source still lies beyond the iron door. The corridor hub waits."
     },
-    "choices": [{ "id": "hub", "label": "Back to the hub", "next": "corridor_hub" }]
+    "choices": [
+      {
+        "id": "hub",
+        "label": "Back to the hub",
+        "next": "corridor_hub"
+      }
+    ]
   },
   "hole_centipedes": {
     "id": "hole_centipedes",
@@ -402,8 +607,16 @@
       "text": "Giant centipedes fall still. Burnt hair lines the hole's rim. Two seals done — one remains, or the laboratory if you already hold three."
     },
     "choices": [
-      { "id": "rest", "label": "Short rest (recover breath)", "next": "short_rest_mid" },
-      { "id": "hub", "label": "Push on to the hub", "next": "corridor_hub" }
+      {
+        "id": "rest",
+        "label": "Short rest (recover breath)",
+        "next": "short_rest_mid"
+      },
+      {
+        "id": "hub",
+        "label": "Push on to the hub",
+        "next": "corridor_hub"
+      }
     ]
   },
   "short_rest_mid": {
@@ -413,9 +626,14 @@
     "narration": {
       "text": "You bind wounds in the mosaic dust. Glowkindle left nothing this deep — only grit and resolve. Ready for the next door."
     },
-    "choices": [{ "id": "hub", "label": "Return to the hub", "next": "corridor_hub" }]
+    "choices": [
+      {
+        "id": "hub",
+        "label": "Return to the hub",
+        "next": "corridor_hub"
+      }
+    ]
   },
-
   "lab_vault": {
     "id": "lab_vault",
     "type": "story",
@@ -428,7 +646,9 @@
         "id": "open",
         "label": "Push the laboratory open",
         "next": "enter_lab",
-        "flagsSet": ["vault_unlocked"]
+        "flagsSet": [
+          "vault_unlocked"
+        ]
       }
     ]
   },
@@ -440,8 +660,16 @@
       "text": "Cracked glass. Scorched tables. Something large waits on the ceiling. Silk glints with embers. The threshold hole behind you goes… listening."
     },
     "choices": [
-      { "id": "rest", "label": "Short rest before the boss (recommended)", "next": "lab_rest" },
-      { "id": "enter", "label": "Step in and face it now", "next": "fight_spider" }
+      {
+        "id": "rest",
+        "label": "Short rest before the boss (recommended)",
+        "next": "lab_rest"
+      },
+      {
+        "id": "enter",
+        "label": "Step in and face it now",
+        "next": "fight_spider"
+      }
     ]
   },
   "lab_rest": {
@@ -451,7 +679,13 @@
     "narration": {
       "text": "You steal a short rest on the vault threshold. Potions from Glowkindle's stair cache still warm your packs. The silk above shifts impatiently."
     },
-    "choices": [{ "id": "enter", "label": "Enter the lab", "next": "fight_spider" }]
+    "choices": [
+      {
+        "id": "enter",
+        "label": "Enter the lab",
+        "next": "fight_spider"
+      }
+    ]
   },
   "fight_spider": {
     "id": "fight_spider",
@@ -466,7 +700,13 @@
     "narration": {
       "text": "The Infernal Spider collapses. Through the hole by the iron door you glimpse a cuniculus leading back toward this lab — and it goes silent. The source is dead. Time to climb toward beer and gold…"
     },
-    "choices": [{ "id": "return", "label": "Return through the mosaic corridor", "next": "corridor_hub" }]
+    "choices": [
+      {
+        "id": "return",
+        "label": "Return through the mosaic corridor",
+        "next": "corridor_hub"
+      }
+    ]
   },
   "cliffhanger_magma": {
     "id": "cliffhanger_magma",
@@ -477,8 +717,16 @@
       "text": "The mosaic corridor glows orange. Fur and lava block the runner. A Magma Rat the size of a hound grins with molten teeth — the exit tax of Luppolandia."
     },
     "choices": [
-      { "id": "save_quit", "label": "Save and stop (session break)", "next": "END_SAVE" },
-      { "id": "finish_now", "label": "Fight the Magma Rat now", "next": "fight_magma" }
+      {
+        "id": "save_quit",
+        "label": "Save and stop (session break)",
+        "next": "END_SAVE"
+      },
+      {
+        "id": "finish_now",
+        "label": "Fight the Magma Rat now",
+        "next": "fight_magma"
+      }
     ]
   },
   "fight_magma": {
@@ -494,6 +742,12 @@
     "narration": {
       "text": "Glowkindle meets you with shaking hands and full mugs. The squeaking is gone. Seventy-five gold each, beer for a month — and the last of the Tashalar Pale Ale tastes like victory with a metallic aftertaste only Luppolandia knows."
     },
-    "choices": [{ "id": "done", "label": "End adventure", "next": "END_WIN" }]
+    "choices": [
+      {
+        "id": "done",
+        "label": "End adventure",
+        "next": "END_WIN"
+      }
+    ]
   }
 }

@@ -1,4 +1,7 @@
+import "@fontsource/cinzel/700.css";
+import "@fontsource-variable/literata/opsz.css";
 import "./styles.css";
+import { describeError, srdLabel } from "@d20-fireverse/protocol";
 
 interface SpeechAlt {
   readonly transcript: string;
@@ -32,214 +35,372 @@ function speechCtor(): SpeechSessionCtor | null {
   return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null;
 }
 
-type Seat = { playerId: string; characterName: string };
-type Token = {
-  playerId?: string;
-  name: string;
-  hp: number;
-  maxHp: number;
-  dead: boolean;
-};
+type Pregen = { id: string; name: string; summary: string; class: string; race?: string; level: number; portrait?: string };
+type Seat = { playerId: string; characterId: string; characterName: string; portrait: string };
+type Token = { id: string; playerId?: string; name: string; hp: number; maxHp: number; ac: number; dead: boolean; kind: string };
+type MenuAction = { id: string; name: string; available: boolean };
 type TableState = {
-  roomCode?: string;
-  nodeId?: string;
+  roomCode: string;
+  nodeId: string;
+  nodeType: string;
   alexaScene?: string;
   narration?: string;
-  players?: Seat[];
-  combat?: { currentName?: string; tokens?: Token[] } | null;
-  choices?: Array<{ id: string; label: string }>;
+  players: Seat[];
+  choices: Array<{ id: string; label: string }>;
+  skillCheck?: { ability: string; skill?: string; dc: number };
+  puzzle: unknown | null;
+  combat: {
+    status: string;
+    round: number;
+    currentTokenId?: string;
+    currentName?: string;
+    tokens: Token[];
+    actionMenu: { actions: MenuAction[] } | null;
+  } | null;
+  localPlayerId: string | null;
 };
 
-const app = document.querySelector("#app")!;
+const STORE = "fireverse.companion.v1";
+type Stored = { roomCode: string; playerId: string | null };
+
+function loadStored(): Stored | null {
+  try {
+    const s = JSON.parse(localStorage.getItem(STORE) ?? "null") as Stored | null;
+    return s?.roomCode ? s : null;
+  } catch {
+    return null;
+  }
+}
+function saveStored(s: Stored | null) {
+  try {
+    if (s) localStorage.setItem(STORE, JSON.stringify(s));
+    else localStorage.removeItem(STORE);
+  } catch {
+    /* private mode: the seat just won't survive a reload */
+  }
+}
+
+const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
+const cleanCode = (s: string) => s.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6);
+
+const params = new URLSearchParams(location.search);
+const stored = loadStored();
+let roomCode = cleanCode(params.get("room") ?? stored?.roomCode ?? "");
+let playerId: string | null = params.get("seat") ?? (stored && stored.roomCode === roomCode ? stored.playerId : null);
+if (params.has("room")) history.replaceState(null, "", location.pathname);
+
+const app = document.querySelector<HTMLElement>("#app")!;
 app.innerHTML = `
   <header class="mast">
-    <p class="kicker">D20 FireVerse</p>
-    <h1>Companion</h1>
-    <p class="meta">The phone is the sheet and the voice. The television keeps the table.</p>
+    <div>
+      <p class="kicker">D20 FireVerse · Companion</p>
+      <h1 id="mastTitle">Take a seat</h1>
+    </div>
+    <span class="conn" id="conn">Connecting…</span>
   </header>
-  <section class="panel">
-    <label>Room code<input id="roomCode" maxlength="6" autocapitalize="characters" placeholder="ABC123" /></label>
-    <label>Seat<input id="playerId" placeholder="P1" /></label>
-    <button class="primary" id="btnConnect" type="button">Sit at the table</button>
-    <p class="meta" id="status">Not connected</p>
+
+  <section class="panel" id="joinPanel">
+    <form class="code-row" id="codeForm">
+      <label for="roomCode">Table code</label>
+      <input id="roomCode" maxlength="6" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="ABC123" inputmode="text" />
+      <button type="submit" class="primary">Find the table</button>
+    </form>
+    <p class="meta" id="joinHint">The code is on the television, above the QR code.</p>
+    <div class="heroes" id="heroes"></div>
   </section>
-  <section class="panel sheet" id="sheet">
-    <div id="sheetBody" class="meta">Join from the television first. Your seat id is on the story bar.</div>
+
+  <section class="panel seat-panel" id="seatPanel" hidden>
+    <div class="who" id="who"></div>
+    <div class="turn" id="turn" hidden></div>
+    <div class="controls" id="controls"></div>
+    <p class="narr" id="narr"></p>
+    <div class="row-end"><button type="button" class="ghost small" id="btnLeave">Leave this seat</button></div>
   </section>
-  <section class="panel">
+
+  <section class="panel" id="micPanel" hidden>
     <h2>Say it</h2>
-    <p class="meta">“choose two”, “attack”, “magic missile”, “end turn”.</p>
-    <button type="button" id="btnMic">Hold the room — listen</button>
-    <div class="grid" id="intents"></div>
+    <p class="meta">“Choose two”, “attack”, “magic missile”, “end turn”.</p>
+    <button type="button" id="btnMic" class="mic">Tap and speak</button>
   </section>
-  <p class="err" id="err"></p>
+
+  <p class="toast" id="toast" role="status" hidden></p>
 `;
 
-const $ = (id: string) => document.getElementById(id)!;
+const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 
 let ws: WebSocket | null = null;
 let state: TableState | null = null;
-let pollTimer = 0;
+let pregens: Pregen[] = [];
+let reconnectDelay = 800;
+let toastTimer = 0;
 
-const INTENT_BTNS: Array<[string, string]> = [
-  ["choose_1", "Choose 1"],
-  ["choose_2", "Choose 2"],
-  ["choose_3", "Choose 3"],
-  ["end_turn", "End turn"],
-  ["attack_nearest", "Attack nearest"],
-  ["cast_magic_missile", "Magic missile"],
-];
+($("roomCode") as HTMLInputElement).value = roomCode;
 
-$("intents").innerHTML = INTENT_BTNS.map(
-  ([id, label]) =>
-    `<button type="button" data-intent="${id}">${label}</button>`,
-).join("");
+function toast(text: string, kind: "bad" | "ok" = "bad") {
+  const el = $("toast");
+  el.textContent = text;
+  el.className = `toast ${kind}`;
+  el.hidden = false;
+  window.clearTimeout(toastTimer);
+  toastTimer = window.setTimeout(() => (el.hidden = true), 4200);
+}
 
-function send(obj: unknown) {
+function send(obj: Record<string, unknown>): boolean {
   if (!ws || ws.readyState !== WebSocket.OPEN) {
-    $("err").textContent = "Connect before you speak";
-    return;
+    toast("Reconnecting to the table — try again in a moment.");
+    return false;
   }
   ws.send(JSON.stringify(obj));
+  return true;
 }
 
-function sceneName(scene: string | undefined) {
-  switch (scene) {
-    case "tavern":
-      return "Tavern";
-    case "explore":
-      return "Descent";
-    case "combat":
-      return "Combat";
-    case "boss":
-      return "Boss";
-    case "victory":
-      return "Victory";
-    default:
-      return "—";
-  }
+function attach() {
+  if (!roomCode) return;
+  send({ action: "REJOIN", roomCode, playerId: playerId ?? undefined });
 }
 
-function renderSheet() {
-  const body = $("sheetBody");
-  if (!state?.players?.length) {
-    body.innerHTML = `<div class="meta">Waiting for the room…</div>`;
+function me(): Seat | undefined {
+  return state?.players.find((p) => p.playerId === playerId);
+}
+
+function render() {
+  const seated = !!state && !!me();
+  $("joinPanel").hidden = seated;
+  $("seatPanel").hidden = !seated;
+  $("micPanel").hidden = !seated;
+  $("mastTitle").textContent = seated ? me()!.characterName : state ? `Table ${state.roomCode}` : "Take a seat";
+  document.body.dataset.room = state?.alexaScene ?? "tavern";
+  if (seated) renderSeat();
+  else renderHeroes();
+}
+
+function renderHeroes() {
+  const box = $("heroes");
+  if (!state) {
+    box.innerHTML = "";
+    $("joinHint").textContent = roomCode ? "Looking for the table…" : "The code is on the television, above the QR code.";
     return;
   }
-  const pid = ($("playerId") as HTMLInputElement).value.trim();
-  const me = state.players.find((p) => p.playerId === pid) || state.players[0];
-  const token = state.combat?.tokens?.find((t) => t.playerId === me.playerId);
-  const hp = token ? Math.max(0, token.hp / Math.max(1, token.maxHp)) : 0;
-  const choices = (state.choices || [])
-    .map((c, i) => `<li>${i + 1}. ${c.label}</li>`)
+  const taken = new Set(state.players.map((p) => p.characterId));
+  const inFight = state.combat?.status === "active";
+  $("joinHint").textContent = inFight ? "A fight is on. You can take a seat as soon as it ends." : "Choose who you'll play. The television shows the rest.";
+  box.innerHTML = pregens
+    .map((p) => {
+      const busy = taken.has(p.id);
+      return `<button type="button" class="hero" data-hero="${esc(p.id)}" ${busy || inFight ? "disabled" : ""}>
+        ${p.portrait ? `<img src="${esc(p.portrait)}" alt="" loading="lazy" />` : `<span class="mark">${esc(p.name.slice(0, 1))}</span>`}
+        <span><strong>${esc(p.name)}</strong><em>${esc([srdLabel(p.race), srdLabel(p.class), `Level ${p.level}`].filter(Boolean).join(" · "))}</em>${busy ? `<i>At the table</i>` : ""}</span>
+      </button>`;
+    })
     .join("");
-  body.innerHTML = `
-    <div class="who">
-      <span class="mark">${me.characterName.slice(0, 1)}</span>
-      <div>
-        <strong>${me.characterName}</strong>
-        <div class="meta">${me.playerId} · ${sceneName(state.alexaScene)}</div>
-      </div>
-    </div>
-    <div class="hp"><span style="width:${token ? Math.round(hp * 100) : 0}%"></span></div>
-    <div class="meta">${token ? `${token.hp}/${token.maxHp} HP` : "Not in a fight"} · Turn ${state.combat?.currentName || "—"}</div>
-    <p class="narr">${(state.narration || "").slice(0, 280)}</p>
-    ${choices ? `<ol class="choices">${choices}</ol>` : ""}
-  `;
-  document.body.dataset.room = state.alexaScene || "tavern";
+  box.querySelectorAll<HTMLElement>("[data-hero]").forEach((b) =>
+    b.addEventListener("click", () => {
+      const hero = pregens.find((p) => p.id === b.dataset.hero);
+      if (!hero || !state) return;
+      b.setAttribute("aria-busy", "true");
+      send({ action: "JOIN_ROOM", roomCode: state.roomCode, characterId: hero.id, displayName: hero.name });
+    }),
+  );
 }
 
-function intentFromSpeech(text: string): string | null {
+function renderSeat() {
+  const s = state!;
+  const seat = me()!;
+  const token = s.combat?.tokens.find((t) => t.playerId === seat.playerId);
+  const ratio = token ? Math.max(0, token.hp / Math.max(1, token.maxHp)) : 1;
+  $("who").innerHTML = `
+    <img src="${esc(seat.portrait)}" alt="" />
+    <div>
+      <strong>${esc(seat.characterName)}</strong>
+      <span class="meta">${token ? `${token.hp}/${token.maxHp} HP · AC ${token.ac}` : "Exploring"}</span>
+      <span class="hp"><i style="width:${Math.round(ratio * 100)}%"></i></span>
+    </div>`;
+
+  const turn = $("turn");
+  const controls = $("controls");
+  const combat = s.combat?.status === "active" ? s.combat : null;
+  if (combat) {
+    const mine = !!token && combat.currentTokenId === token.id;
+    turn.hidden = false;
+    turn.className = `turn ${mine ? "mine" : ""}`;
+    turn.textContent = token?.dead ? "You are down — your allies can still turn this." : mine ? "Your turn" : `Round ${combat.round} · ${combat.currentName ?? "…"} is acting`;
+    const menu = combat.actionMenu?.actions ?? [];
+    const missile = menu.find((a) => a.id === "spell_magic_missile");
+    controls.innerHTML = mine
+      ? `<button type="button" class="primary big" data-intent="attack_nearest">Attack the nearest foe</button>
+         ${missile ? `<button type="button" data-intent="cast_magic_missile" ${missile.available ? "" : "disabled"}>Magic Missile</button>` : ""}
+         <button type="button" data-intent="end_turn">End turn</button>
+         <p class="meta">Moving and aiming happen on the television with the remote.</p>`
+      : "";
+  } else {
+    turn.hidden = true;
+    if (s.skillCheck && s.nodeType === "skill_check") {
+      const skill = (s.skillCheck.skill ?? s.skillCheck.ability).replace(/_/g, " ");
+      controls.innerHTML = `<button type="button" class="primary big" data-choice="attempt">Roll ${esc(skill)} · DC ${s.skillCheck.dc}</button>`;
+    } else if (s.puzzle) {
+      controls.innerHTML = `<p class="meta">A puzzle is on the television. Work it out together, then use the remote.</p>`;
+    } else {
+      controls.innerHTML = s.choices
+        .map((c, i) => `<button type="button" class="${i === 0 ? "primary" : ""}" data-choice="${esc(c.id)}"><b>${i + 1}</b>${esc(c.label)}</button>`)
+        .join("");
+    }
+  }
+  controls.querySelectorAll<HTMLElement>("[data-intent]").forEach((b) =>
+    b.addEventListener("click", () => {
+      if (navigator.vibrate) navigator.vibrate(12);
+      send({ action: "VOICE_INTENT", roomCode: s.roomCode, playerId, intent: b.dataset.intent });
+    }),
+  );
+  controls.querySelectorAll<HTMLElement>("[data-choice]").forEach((b) =>
+    b.addEventListener("click", () => {
+      if (navigator.vibrate) navigator.vibrate(12);
+      send({ action: "CHOOSE", roomCode: s.roomCode, choiceId: b.dataset.choice });
+    }),
+  );
+  $("narr").textContent = (s.narration ?? "").split(/\n{2,}/)[0]!.slice(0, 320);
+}
+
+function connect() {
+  const proto = location.protocol === "https:" ? "wss" : "ws";
+  ws = new WebSocket(`${proto}://${location.host}/ws`);
+  const conn = $("conn");
+  ws.onopen = () => {
+    reconnectDelay = 800;
+    conn.textContent = "Live";
+    conn.className = "conn ok";
+  };
+  ws.onclose = () => {
+    conn.textContent = "Reconnecting…";
+    conn.className = "conn bad";
+    window.setTimeout(connect, reconnectDelay);
+    reconnectDelay = Math.min(8000, reconnectDelay * 1.6);
+  };
+  ws.onmessage = (ev) => {
+    let msg: { eventType?: string; payload?: any };
+    try {
+      msg = JSON.parse(String(ev.data));
+    } catch {
+      return;
+    }
+    switch (msg.eventType) {
+      case "HELLO":
+        pregens = msg.payload?.pregens ?? [];
+        attach();
+        render();
+        break;
+      case "SEAT":
+        if (msg.payload?.playerId) {
+          playerId = msg.payload.playerId;
+          saveStored({ roomCode, playerId });
+        }
+        break;
+      case "ROOM_STATE":
+        state = msg.payload as TableState;
+        roomCode = state.roomCode;
+        if (state.localPlayerId) playerId = state.localPlayerId;
+        if (playerId && !state.players.some((p) => p.playerId === playerId)) playerId = null;
+        saveStored({ roomCode, playerId });
+        render();
+        break;
+      case "CHARACTER_CREATED":
+        pregens = msg.payload?.pregens ?? pregens;
+        render();
+        break;
+      case "ERROR": {
+        const code = String(msg.payload?.code ?? "");
+        if (msg.payload?.action === "REJOIN") {
+          if (playerId) {
+            playerId = null;
+            attach();
+            return;
+          }
+          state = null;
+          saveStored(null);
+          render();
+          toast(code === "ROOM_NOT_FOUND" ? "No table with that code. Check the television." : describeError(code));
+          return;
+        }
+        document.querySelectorAll("[aria-busy]").forEach((b) => b.removeAttribute("aria-busy"));
+        toast(describeError(code));
+        break;
+      }
+      default:
+        break;
+    }
+  };
+}
+
+$("codeForm").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const code = cleanCode(($("roomCode") as HTMLInputElement).value);
+  if (code.length < 4) {
+    toast("Type the table code shown on the television.");
+    return;
+  }
+  roomCode = code;
+  playerId = null;
+  attach();
+});
+
+$("btnLeave").addEventListener("click", () => {
+  playerId = null;
+  saveStored({ roomCode, playerId: null });
+  attach();
+  render();
+});
+
+function intentFromSpeech(text: string): { intent?: string; choice?: number } | null {
   const t = text.toLowerCase();
-  if (/\bend\b/.test(t) && /turn/.test(t)) return "end_turn";
-  if (/magic missile|missile/.test(t)) return "cast_magic_missile";
-  if (/attack|strike|hit|swing/.test(t)) return "attack_nearest";
-  if (/\b(three|third|3)\b/.test(t)) return "choose_3";
-  if (/\b(two|second|2)\b/.test(t)) return "choose_2";
-  if (/\b(one|first|1)\b/.test(t)) return "choose_1";
+  if (/\bend\b/.test(t) && /turn/.test(t)) return { intent: "end_turn" };
+  if (/magic missile|missile/.test(t)) return { intent: "cast_magic_missile" };
+  if (/attack|strike|hit|swing|shoot/.test(t)) return { intent: "attack_nearest" };
+  if (/\b(three|third|3)\b/.test(t)) return { choice: 3 };
+  if (/\b(two|second|2)\b/.test(t)) return { choice: 2 };
+  if (/\b(one|first|1|roll)\b/.test(t)) return { choice: 1 };
   return null;
 }
 
-function dispatchIntent(intent: string) {
-  const roomCode = ($("roomCode") as HTMLInputElement).value.toUpperCase();
-  const playerId = ($("playerId") as HTMLInputElement).value.trim() || "P1";
-  send({ action: "VOICE_INTENT", roomCode, playerId, intent });
-}
-
-$("btnConnect").onclick = () => {
-  $("err").textContent = "";
-  ws?.close();
-  window.clearTimeout(pollTimer);
-  const proto = location.protocol === "https:" ? "wss" : "ws";
-  ws = new WebSocket(`${proto}://${location.host}/ws`);
-  ws.onopen = () => {
-    $("status").textContent = "Listening to the table";
-    const room = ($("roomCode") as HTMLInputElement).value.toUpperCase();
-    if (room) pollRoom(room);
-  };
-  ws.onmessage = (ev) => {
-    const msg = JSON.parse(String(ev.data)) as { eventType?: string; payload?: TableState & { code?: string } };
-    if (msg.eventType === "ROOM_STATE" && msg.payload) {
-      state = msg.payload;
-      renderSheet();
-    }
-    if (msg.eventType === "ERROR") {
-      $("err").textContent = msg.payload?.code || "The table refused that";
-    }
-  };
-  ws.onclose = () => {
-    $("status").textContent = "Disconnected";
-  };
-};
-
-async function pollRoom(room: string) {
-  try {
-    const r = await fetch(`/api/room/${room}`);
-    if (r.ok) {
-      state = (await r.json()) as TableState;
-      renderSheet();
-    }
-  } catch {
-    /* the socket is the source of truth when it is up */
-  }
-  if (ws && ws.readyState === WebSocket.OPEN) {
-    pollTimer = window.setTimeout(() => pollRoom(room), 1500);
-  }
-}
-
-$("intents").onclick = (e) => {
-  const t = e.target as HTMLElement;
-  const intent = t.getAttribute("data-intent");
-  if (!intent) return;
-  dispatchIntent(intent);
-};
-
-$("btnMic").onclick = () => {
+let listening: SpeechSession | null = null;
+$("btnMic").addEventListener("click", () => {
   const Ctor = speechCtor();
   if (!Ctor) {
-    $("err").textContent = "This browser has no speech recognition — use the buttons";
+    toast("This browser can't listen. Use the buttons above.");
+    return;
+  }
+  if (listening) {
+    listening.stop();
     return;
   }
   const rec = new Ctor();
+  listening = rec;
   rec.lang = "en-US";
   rec.interimResults = false;
   rec.continuous = false;
   rec.onresult = (ev) => {
     const said = ev.results[0]?.[0]?.transcript ?? "";
-    const intent = intentFromSpeech(said);
-    if (!intent) {
-      $("err").textContent = `Heard “${said}” — not a table command`;
+    const heard = intentFromSpeech(said);
+    if (!heard || !state) {
+      toast(`Heard “${said}” — that isn't a table command.`);
       return;
     }
-    $("err").textContent = `Heard “${said}”`;
-    dispatchIntent(intent);
+    toast(`Heard “${said}”`, "ok");
+    const intent = heard.intent ?? `choose_${heard.choice}`;
+    send({ action: "VOICE_INTENT", roomCode: state.roomCode, playerId, intent });
   };
-  rec.onerror = (ev) => {
-    $("err").textContent = ev.error === "not-allowed" ? "Microphone blocked" : ev.error;
-  };
+  rec.onerror = (ev) => toast(ev.error === "not-allowed" ? "The microphone is blocked for this page." : "The microphone didn't catch that.");
   rec.onend = () => {
-    $("btnMic").textContent = "Hold the room — listen";
+    listening = null;
+    $("btnMic").textContent = "Tap and speak";
+    $("btnMic").classList.remove("live");
   };
-  $("btnMic").textContent = "Listening…";
+  $("btnMic").textContent = "Listening… tap to stop";
+  $("btnMic").classList.add("live");
   rec.start();
-};
+});
+
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden && ws?.readyState === WebSocket.OPEN) attach();
+});
+
+render();
+connect();

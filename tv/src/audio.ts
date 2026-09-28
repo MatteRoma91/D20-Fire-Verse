@@ -1,17 +1,13 @@
-/** Room scenes, the shared AudioContext and synthesized stingers. Music lives in music.ts. */
+/** The table's one AudioContext: music, narrator and effects each on their own bus. */
 
 import { attachMusic } from "./music";
+import { onSettings, settings } from "./settings";
 
 const SCENES = ["tavern", "explore", "combat", "boss", "victory"] as const;
 export type RoomScene = (typeof SCENES)[number];
 
-export function normalizeScene(
-  raw: string | undefined,
-  fallback: RoomScene,
-): RoomScene {
-  if (raw && (SCENES as readonly string[]).includes(raw)) {
-    return raw as RoomScene;
-  }
+export function normalizeScene(raw: string | undefined, fallback: RoomScene): RoomScene {
+  if (raw && (SCENES as readonly string[]).includes(raw)) return raw as RoomScene;
   return fallback;
 }
 
@@ -34,105 +30,65 @@ export function sceneLabel(scene: RoomScene): string {
   }
 }
 
-let ctx: AudioContext | null = null;
-let master: GainNode | null = null;
+type Buses = { ctx: AudioContext; master: GainNode; voice: GainNode; sfx: GainNode };
+
+let buses: Buses | null = null;
 let armed = false;
+const armListeners = new Set<(b: Buses) => void>();
 
-function context(): AudioContext {
-  if (!ctx || !master) {
-    ctx = new AudioContext();
-    master = ctx.createGain();
-    master.gain.value = 0.9;
-    master.connect(ctx.destination);
-    document.addEventListener("visibilitychange", () => {
-      if (!ctx) return;
-      if (document.hidden) void ctx.suspend();
-      else if (armed) void ctx.resume();
-    });
-  }
-  return ctx;
+function create(): Buses {
+  if (buses) return buses;
+  const ctx = new AudioContext({ latencyHint: "interactive" });
+  const master = ctx.createGain();
+  const limiter = ctx.createDynamicsCompressor();
+  limiter.threshold.value = -6;
+  limiter.knee.value = 6;
+  limiter.ratio.value = 8;
+  limiter.attack.value = 0.003;
+  limiter.release.value = 0.2;
+  master.connect(limiter);
+  limiter.connect(ctx.destination);
+  const voice = ctx.createGain();
+  const sfx = ctx.createGain();
+  voice.connect(master);
+  sfx.connect(master);
+  buses = { ctx, master, voice, sfx };
+  onSettings((s) => {
+    const now = ctx.currentTime;
+    voice.gain.setTargetAtTime(s.voice, now, 0.05);
+    sfx.gain.setTargetAtTime(s.sfx, now, 0.05);
+  });
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) void ctx.suspend();
+    else if (armed) void ctx.resume();
+  });
+  return buses;
 }
 
+/** Browsers only let sound start after a key press; every remote press calls this. */
 export function unlockAudio() {
-  const c = context();
-  if (c.state === "suspended" && !document.hidden) void c.resume();
-  if (armed || !master) return;
+  const b = create();
+  if (b.ctx.state === "suspended" && !document.hidden) void b.ctx.resume();
+  if (armed) return;
   armed = true;
-  attachMusic(c, master);
+  attachMusic(b.ctx, b.master);
+  for (const fn of armListeners) fn(b);
 }
 
-function tone(
-  freq: number,
-  dur: number,
-  type: OscillatorType,
-  gain: number,
-  slideTo?: number,
-) {
-  if (!armed || !master) return;
-  const c = context();
-  const osc = c.createOscillator();
-  const g = c.createGain();
-  osc.type = type;
-  osc.frequency.setValueAtTime(freq, c.currentTime);
-  if (slideTo) {
-    osc.frequency.exponentialRampToValueAtTime(
-      Math.max(1, slideTo),
-      c.currentTime + dur,
-    );
-  }
-  g.gain.setValueAtTime(gain, c.currentTime);
-  g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + dur);
-  osc.connect(g);
-  g.connect(master);
-  osc.start();
-  osc.stop(c.currentTime + dur + 0.02);
+export function audioReady(): Buses | null {
+  return armed ? buses : null;
 }
 
-function noise(duration: number, freq: number, gain: number) {
-  if (!armed || !master) return;
-  const c = context();
-  const frames = Math.max(1, Math.floor(c.sampleRate * duration));
-  const buffer = c.createBuffer(1, frames, c.sampleRate);
-  const data = buffer.getChannelData(0);
-  for (let i = 0; i < frames; i += 1) {
-    data[i] = (Math.random() * 2 - 1) * (1 - i / frames);
-  }
-  const src = c.createBufferSource();
-  src.buffer = buffer;
-  const filter = c.createBiquadFilter();
-  filter.type = "bandpass";
-  filter.frequency.value = freq;
-  filter.Q.value = 0.7;
-  const g = c.createGain();
-  g.gain.value = gain;
-  src.connect(filter);
-  filter.connect(g);
-  g.connect(master);
-  src.start();
+export function onAudioArmed(fn: (b: Buses) => void) {
+  if (armed && buses) fn(buses);
+  else armListeners.add(fn);
 }
 
-export const audio = {
-  unlock: unlockAudio,
-  confirm() {
-    tone(520, 0.07, "sine", 0.04, 680);
-  },
-  dice() {
-    noise(0.22, 1400, 0.07);
-    tone(180, 0.12, "triangle", 0.03, 90);
-  },
-  hit() {
-    noise(0.08, 240, 0.09);
-    tone(160, 0.14, "triangle", 0.08, 48);
-  },
-  fanfare() {
-    tone(523, 0.18, "sine", 0.06);
-    tone(784, 0.28, "sine", 0.05);
-  },
-  fumble() {
-    tone(196, 0.22, "sawtooth", 0.03, 70);
-  },
-  turn() {
-    tone(392, 0.09, "sine", 0.05);
-    window.setTimeout(() => tone(523, 0.12, "sine", 0.04), 90);
-  },
-};
+export function audioFormat(): "ogg" | "m4a" {
+  const probe = document.createElement("audio");
+  return probe.canPlayType('audio/ogg; codecs="vorbis"') ? "ogg" : "m4a";
+}
+
+export function currentVoiceVolume(): number {
+  return settings().voice;
+}

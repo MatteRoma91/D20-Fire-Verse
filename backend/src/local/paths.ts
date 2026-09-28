@@ -10,7 +10,9 @@ export const CAMPAIGN_DIR = path.join(
   "campaigns",
   "luppolandia-brew",
 );
-export const DATA_DIR = path.join(REPO_ROOT, "backend", "data");
+export const DATA_DIR = process.env.FIREVERSE_DATA_DIR
+  ? path.resolve(process.env.FIREVERSE_DATA_DIR)
+  : path.join(REPO_ROOT, "backend", "data");
 
 export function readJson<T>(filePath: string): T {
   return JSON.parse(fs.readFileSync(filePath, "utf8")) as T;

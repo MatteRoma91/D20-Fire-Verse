@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { CONTENT_ROOT, DATA_DIR, readJson } from "./paths.js";
 import type { Pregen } from "./campaign.js";
+import { defaultPortrait, isPortraitId } from "./portraits.js";
 
 export type AbilityKey = "str" | "dex" | "con" | "int" | "wis" | "cha";
 
@@ -27,6 +28,8 @@ export type ChargenDraft = {
   hpMethod?: "average" | "rolled";
   /** Optional rolled HP extras for levels 2+ (hit die rolls, no CON). */
   hpRolls?: number[];
+  /** One of the painted portraits; defaults from race and class. */
+  portraitId?: string;
 };
 
 type RaceDef = {
@@ -500,6 +503,7 @@ export function buildCharacter(draft: ChargenDraft, rolledPool?: number[]): Preg
       ...(bg.tool ? [bg.tool] : []),
     ],
     guidedDefaultAction: guided,
+    portrait: isPortraitId(draft.portraitId) ? draft.portraitId : defaultPortrait(draft.raceId, draft.classId),
   };
 
   // Extended fields used by combat/sheet (cast through enrich)

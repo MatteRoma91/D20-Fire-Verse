@@ -1,7 +1,13 @@
 # Companion
 
-Web companion for hackathon v1:
-- Read-only-ish character sheet (HP, slots, inventory display)
-- **Microphone** → Amazon Transcribe → rigid voice intents to the game server
+The phone at the table. Scan the QR code on the television (or type the table code) and:
 
-Not a full game controller for movement/menus (those stay on the TV remote).
+- take a seat with one of the heroes,
+- see your portrait, hit points and armour class,
+- pick story choices and roll skill checks with a tap,
+- on your turn in a fight: attack the nearest foe, cast Magic Missile, end the turn,
+- or say it: "choose two", "attack", "magic missile", "end turn" (browser speech recognition).
+
+Moving and aiming stay on the television remote. The seat survives reloads and Wi-Fi drops (it rejoins automatically).
+
+`npm run dev:companion` serves it on <http://localhost:4319/companion/>; after `npm run build` the backend serves it on `/companion/`.

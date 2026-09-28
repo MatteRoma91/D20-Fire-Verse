@@ -15,10 +15,36 @@ Full CC-BY-4.0 text: https://creativecommons.org/licenses/by/4.0/
 
 ## Third-party assets
 
-List art, music, SFX, and fonts here as they are added (title, author, license, URL).
-
 ### Music
 
 The seven cues in `tv/public/audio/music/` are original compositions for this project, written and
 synthesized by `tools/music/compose.py`. No samples, loops, or third-party recordings are used.
 They are covered by the repository's MIT license.
+
+### Sound effects
+
+Everything in `tv/public/audio/sfx/` is synthesized from scratch by `tools/sfx/render.py` (noise,
+oscillators and filters — no samples or recordings). Covered by the repository's MIT license.
+
+### Narrator voice
+
+The narrator is generated at runtime by **Kokoro-82M** (hexgrad, Apache-2.0), loaded through
+`kokoro-js` from the ONNX export `onnx-community/Kokoro-82M-v1.0-ONNX`.
+Model card and license: https://huggingface.co/hexgrad/Kokoro-82M. The model is downloaded on first
+run and is not redistributed in this repository. Rendered clips are a cache, not shipped assets.
+
+### Illustrations
+
+Scene paintings, the dungeon map and all hero, NPC and foe portraits in `tv/public/art/` were created
+for this project and are covered by the repository's MIT license.
+
+### Fonts
+
+Self-hosted through Fontsource, both under the SIL Open Font License 1.1:
+
+- **Cinzel** — Natanael Gama — https://fonts.google.com/specimen/Cinzel
+- **Literata** — TypeTogether for Google — https://fonts.google.com/specimen/Literata
+
+### Libraries
+
+PixiJS (MIT), three.js (MIT), qrcode-generator (MIT), Express (MIT), ws (MIT), Vite (MIT).

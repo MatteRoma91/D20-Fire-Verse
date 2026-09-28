@@ -1,4 +1,6 @@
-/** Navigable summarized PC sheet used in combat instead of flat action buttons. */
+/** The hero's sheet beside the board: portrait, vitals, economy pips and a few tabs of detail. */
+
+import { srdLabel } from "@d20-fireverse/protocol";
 
 export type SheetAction = {
   id: string;
@@ -28,6 +30,7 @@ export type PcSheet = {
   traits: string[];
   inventory: string[];
   weapons: string[];
+  portrait?: string;
   economy: {
     movementLeft: number;
     hasAction: boolean;
@@ -40,169 +43,74 @@ export type PcSheet = {
   bonusActions: SheetAction[];
 };
 
-type Tab = "overview" | "actions" | "bonus" | "gear" | "features";
-
-const TABS: Array<{ id: Tab; label: string }> = [
+export const SHEET_TABS = [
   { id: "overview", label: "Sheet" },
-  { id: "actions", label: "Actions" },
-  { id: "bonus", label: "Bonus" },
   { id: "gear", label: "Gear" },
   { id: "features", label: "Traits" },
-];
+] as const;
+export type SheetTab = (typeof SHEET_TABS)[number]["id"];
 
-export function renderPcSheet(
-  host: HTMLElement,
-  opts: {
-    sheet: PcSheet | null;
-    isMyTurn: boolean;
-    pendingId?: string | null;
-    onAction: (a: SheetAction) => void;
-    onEndTurn: () => void;
-  },
-): void {
-  const sheet = opts.sheet;
+const pretty = (s: string) => s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+
+function esc(s: string) {
+  return s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
+}
+
+export function renderPcSheet(host: HTMLElement, sheet: PcSheet | null, tab: SheetTab, isMyTurn: boolean, onTab: (t: SheetTab) => void) {
   if (!sheet) {
-    host.innerHTML = `<p class="meta">No character sheet.</p>`;
+    host.innerHTML = `<p class="meta">Waiting for a hero to take the field.</p>`;
     return;
   }
-
-  let tab = (host.dataset.tab as Tab) || "actions";
-  if (!TABS.some((t) => t.id === tab)) tab = "overview";
-
   const eco = sheet.economy;
-  const idle =
-    opts.isMyTurn &&
-    !eco.hasAction &&
-    !eco.hasBonusAction &&
-    eco.movementLeft <= 0;
-
-  const flags = [
-    eco.dodging ? "Dodging" : null,
-    eco.disengaging ? "Disengaging" : null,
-    eco.hidden ? "Hidden" : null,
-  ].filter(Boolean);
-
+  const ratio = sheet.maxHp ? Math.max(0, Math.min(1, sheet.hp / sheet.maxHp)) : 0;
+  const flags = [eco.dodging ? "Dodging" : "", eco.disengaging ? "Disengaged" : "", eco.hidden ? "Hidden" : ""].filter(Boolean);
+  const body = (() => {
+    switch (tab) {
+      case "overview": {
+        const abs = ["str", "dex", "con", "int", "wis", "cha"]
+          .map((k) => {
+            const a = sheet.abilities[k];
+            return a ? `<div class="abil"><span>${k.toUpperCase()}</span><strong>${a.score}</strong><em>${a.modLabel}</em></div>` : "";
+          })
+          .join("");
+        return `<div class="abil-grid">${abs}</div>
+          <p class="meta">Saves ${sheet.savingThrows.map((s) => s.toUpperCase()).join(", ") || "—"}</p>
+          <p class="meta">Skills ${sheet.skills.map(pretty).join(", ") || "—"}</p>`;
+      }
+      case "gear":
+        return `<p class="meta">Weapons ${sheet.weapons.map(pretty).join(", ") || "—"}</p>
+          <ul class="sheet-list">${sheet.inventory.map((i) => `<li>${esc(pretty(i))}</li>`).join("") || "<li class='meta'>Nothing carried</li>"}</ul>`;
+      case "features":
+        return `<ul class="sheet-list">${[...sheet.features, ...sheet.traits].map((f) => `<li>${esc(pretty(f))}</li>`).join("") || "<li class='meta'>None listed</li>"}</ul>`;
+      default: {
+        const exhaustive: never = tab;
+        return exhaustive;
+      }
+    }
+  })();
   host.innerHTML = `
-    <div class="pcsheet">
-      <header class="pcsheet-head">
-        <div>
-          <h3>${sheet.name}</h3>
-          <p class="meta">${[sheet.race, sheet.className, `lv ${sheet.level}`]
-            .filter(Boolean)
-            .join(" · ")}</p>
-        </div>
-        <div class="pcsheet-vitals">
-          <span><em>HP</em> ${sheet.hp}/${sheet.maxHp}</span>
-          <span><em>AC</em> ${sheet.ac}</span>
-          <span><em>Spd</em> ${sheet.speedCells * 5} ft</span>
-          <span><em>Prof</em> +${sheet.proficiencyBonus}</span>
-        </div>
-      </header>
-      <div class="pcsheet-economy meta">
-        Move <strong>${eco.movementLeft}</strong>
-        · Act ${eco.hasAction ? "●" : "○"}
-        · Bonus ${eco.hasBonusAction ? "●" : "○"}
-        ${flags.length ? ` · ${flags.join(" · ")}` : ""}
-        ${!opts.isMyTurn ? " · <em>not your turn</em>" : ""}
+    <header class="sheet-head">
+      ${sheet.portrait ? `<img class="sheet-portrait" src="${sheet.portrait}" alt="" />` : ""}
+      <div>
+        <h3>${esc(sheet.name)}</h3>
+        <p class="meta">${esc([srdLabel(sheet.race), srdLabel(sheet.className), `level ${sheet.level}`].filter(Boolean).join(" · "))}</p>
       </div>
-      <nav class="pcsheet-tabs">
-        ${TABS.map(
-          (t) =>
-            `<button type="button" data-tab="${t.id}" class="${
-              t.id === tab ? "on" : ""
-            }">${t.label}</button>`,
-        ).join("")}
-      </nav>
-      <div class="pcsheet-body">${body(sheet, tab, opts)}</div>
-      <div class="pcsheet-foot">
-        <button type="button" class="primary" id="pcsheetEnd" ${
-          opts.isMyTurn ? "" : "disabled"
-        }>End Turn</button>
-        ${
-          idle
-            ? `<p class="meta">Action economy spent — End Turn to continue.</p>`
-            : ""
-        }
-      </div>
+    </header>
+    <div class="sheet-hp" role="img" aria-label="${sheet.hp} of ${sheet.maxHp} hit points">
+      <span style="--hp:${ratio}"></span><strong>${sheet.hp}<em>/${sheet.maxHp} HP</em></strong>
     </div>
-  `;
-  host.dataset.tab = tab;
-
-  host.querySelectorAll("[data-tab]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      host.dataset.tab = (btn as HTMLElement).dataset.tab || "overview";
-      renderPcSheet(host, opts);
-    });
-  });
-  host.querySelectorAll("[data-act]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const id = (btn as HTMLElement).dataset.act!;
-      const all = [...sheet.actions, ...sheet.bonusActions];
-      const a = all.find((x) => x.id === id);
-      if (a) opts.onAction(a);
-    });
-  });
-  host.querySelector("#pcsheetEnd")?.addEventListener("click", () => {
-    opts.onEndTurn();
-  });
-}
-
-function body(sheet: PcSheet, tab: Tab, opts: { isMyTurn: boolean; pendingId?: string | null }) {
-  if (tab === "overview") {
-    const abs = ["str", "dex", "con", "int", "wis", "cha"]
-      .map((k) => {
-        const a = sheet.abilities[k];
-        if (!a) return "";
-        return `<div class="pcsheet-abil"><span>${k.toUpperCase()}</span><strong>${a.score}</strong><em>${a.modLabel}</em></div>`;
-      })
-      .join("");
-    return `
-      <p class="meta">${sheet.summary || ""}</p>
-      <div class="pcsheet-abs">${abs}</div>
-      <p class="meta">Saves: ${(sheet.savingThrows || []).map((s) => s.toUpperCase()).join(", ") || "—"}</p>
-      <p class="meta">Skills: ${(sheet.skills || []).join(", ") || "—"}</p>
-      <p class="meta">Actions are the strike. Lit cells are your movement. ★ is the suggested play.</p>
-    `;
-  }
-  if (tab === "actions") {
-    return listActs(sheet.actions, opts, "No actions available");
-  }
-  if (tab === "bonus") {
-    return listActs(sheet.bonusActions, opts, "No bonus actions");
-  }
-  if (tab === "gear") {
-    return `
-      <p class="meta">Weapons: ${(sheet.weapons || []).join(", ") || "—"}</p>
-      <ul class="pcsheet-list">${(sheet.inventory || [])
-        .map((i) => `<li>${i.replace(/_/g, " ")}</li>`)
-        .join("") || "<li class='meta'>Empty</li>"}</ul>
-    `;
-  }
-  return `
-    <ul class="pcsheet-list">${[...(sheet.features || []), ...(sheet.traits || [])]
-      .map((f) => `<li>${f.replace(/_/g, " ")}</li>`)
-      .join("") || "<li class='meta'>None listed</li>"}</ul>
-  `;
-}
-
-function listActs(
-  items: SheetAction[],
-  opts: { isMyTurn: boolean; pendingId?: string | null },
-  empty: string,
-) {
-  if (!items.length) return `<p class="meta">${empty}</p>`;
-  return `<div class="pcsheet-acts">${items
-    .map((a) => {
-      const on = opts.pendingId === a.id ? "pending" : "";
-      const dis = !opts.isMyTurn || a.available === false;
-      return `<button type="button" class="pcsheet-act ${on} ${
-        a.guided ? "guided" : ""
-      }" data-act="${a.id}" ${dis ? "disabled" : ""}>
-        <strong>${a.name}${a.guided ? " ★" : ""}</strong>
-        <span class="meta">${a.economy.replace("_", " ")}${
-          a.needsTarget ? " · needs target" : ""
-        }${a.available === false ? " · used" : ""}</span>
-      </button>`;
-    })
-    .join("")}</div>`;
+    <div class="sheet-vitals">
+      <span><em>AC</em>${sheet.ac}</span>
+      <span><em>Speed</em>${sheet.speedCells * 5} ft</span>
+      <span><em>Prof</em>+${sheet.proficiencyBonus}</span>
+    </div>
+    <div class="economy ${isMyTurn ? "live" : ""}">
+      <span class="pip ${eco.hasAction ? "on" : ""}"><i></i>Action</span>
+      <span class="pip ${eco.hasBonusAction ? "on" : ""}"><i></i>Bonus</span>
+      <span class="pip move ${eco.movementLeft > 0 ? "on" : ""}"><i></i>${eco.movementLeft * 5} ft</span>
+      ${flags.map((f) => `<span class="flag">${f}</span>`).join("")}
+    </div>
+    <nav class="sheet-tabs">${SHEET_TABS.map((t) => `<button type="button" data-sheet-tab="${t.id}" class="${t.id === tab ? "on" : ""}">${t.label}</button>`).join("")}</nav>
+    <div class="sheet-body">${body}</div>`;
+  host.querySelectorAll<HTMLElement>("[data-sheet-tab]").forEach((b) => b.addEventListener("click", () => onTab(b.dataset.sheetTab as SheetTab)));
 }

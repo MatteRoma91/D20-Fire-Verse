@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { getCustomCharacter, listCustomCharacters } from "./chargen.js";
 import { CAMPAIGN_DIR, CONTENT_ROOT, readJson } from "./paths.js";
+import { PORTRAITS, defaultPortrait, isPortraitId, portraitUrl } from "./portraits.js";
 
 export type Manifest = {
   id: string;
@@ -36,7 +37,10 @@ export type StoryNode = {
     kind: "sequence";
     solution: string[];
     options: Array<{ id: string; label: string }>;
+    /** Designer answer key; never shown to players. */
     hint?: string;
+    /** Shown after the first wrong attempt. */
+    nudge?: string;
     maxFailsBeforePenalty?: number;
     resetOnFail?: boolean;
   };
@@ -67,6 +71,8 @@ export type Pregen = {
   traits?: string[];
   inventory?: string[];
   guidedDefaultAction?: string;
+  race?: string;
+  portrait?: string;
 };
 
 export type MapDef = {
@@ -85,6 +91,10 @@ export type EncounterDef = {
   id: string;
   name: string;
   mapId: string;
+  /** Narrated as the fight opens. */
+  intro?: string;
+  /** Narrated over the last blow. */
+  outro?: string;
   scaling: Record<
     string,
     Array<{ monsterId: string; count: number; hpOverride?: number }>
@@ -174,6 +184,23 @@ export function getMonster(id: string): MonsterDef | undefined {
 
 export function getAbility(id: string): AbilityDef | undefined {
   return abilities[id];
+}
+
+export { PORTRAITS, portraitUrl, isPortraitId };
+
+const MONSTER_PORTRAITS = new Set(["giant_rat", "giant_centipede", "infernal_spider", "magma_rat"]);
+
+export function portraitForCharacter(characterId: string | undefined): string | null {
+  if (!characterId) return null;
+  const pregen = getPregen(characterId);
+  if (pregen?.portrait && isPortraitId(pregen.portrait)) return portraitUrl(pregen.portrait);
+  if (isPortraitId(characterId)) return portraitUrl(characterId);
+  if (pregen) return portraitUrl(defaultPortrait(pregen.race ?? "", pregen.class));
+  return null;
+}
+
+export function portraitForMonster(monsterId: string | undefined): string | null {
+  return monsterId && MONSTER_PORTRAITS.has(monsterId) ? portraitUrl(monsterId) : null;
 }
 
 export function abilityMod(score: number): number {

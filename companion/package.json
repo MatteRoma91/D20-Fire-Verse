@@ -11,5 +11,10 @@
   "devDependencies": {
     "typescript": "^5.7.2",
     "vite": "^6.0.3"
+  },
+  "dependencies": {
+    "@d20-fireverse/protocol": "*",
+    "@fontsource-variable/literata": "^5.3.0",
+    "@fontsource/cinzel": "^5.3.0"
   }
 }
