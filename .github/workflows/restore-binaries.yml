@@ -1,4 +1,4 @@
-name: restore binaries
+name: restore source
 on:
   workflow_dispatch:
   push:
@@ -11,29 +11,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Pull art and walkthrough videos
+      - name: Add the game source
         run: |
           set -euo pipefail
-          git clone --depth 1 https://github.com/MatteRoma91/D20-Fire-Verse.git /tmp/upstream
-          mkdir -p tv/public/art content/campaigns/luppolandia-brew/maps docs/videos
-          cp -a /tmp/upstream/tv/public/art/. tv/public/art/
-          cp -a /tmp/upstream/content/campaigns/luppolandia-brew/maps/dungeon-map.jpg content/campaigns/luppolandia-brew/maps/dungeon-map.jpg
-          curl -fL --retry 3 -o docs/videos/sable_voss_srd_character_creation.mp4 \
-            "https://tmpfiles.org/dl/1790608925.87968ad1cb21a026/wZAYwOn95GSf/sable_voss_srd_character_creation.mp4"
-          curl -fL --retry 3 -o docs/videos/potent_brew_story_move_and_longsword_dice.mp4 \
-            "https://tmpfiles.org/dl/1790608932.1bd0f78667873ca4/wqAyw1nNWWlJ/potent_brew_story_move_and_longsword_dice.mp4"
-          python3 - << 'PY'
-          import pathlib
-          for p in [
-            pathlib.Path('docs/videos/sable_voss_srd_character_creation.mp4'),
-            pathlib.Path('docs/videos/potent_brew_story_move_and_longsword_dice.mp4'),
-          ]:
-              b = p.read_bytes()[:12]
-              assert b[4:8] == b'ftyp', (p, b)
-              print(p, p.stat().st_size)
-          PY
+          curl -fL --retry 5 --retry-delay 2 -o /tmp/d20-source.tar.gz \
+            "https://tmpfiles.org/dl/1790609192.18a2f4b56c04a4d6/wCAYw7nKvK6X/d20-source.tar.gz"
+          test "$(tar -tzf /tmp/d20-source.tar.gz | wc -l)" -eq 76
+          tar -xzf /tmp/d20-source.tar.gz
+          rm -f docs/bin-test.bin
+          git checkout -- docs/videos
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add tv/public/art content/campaigns/luppolandia-brew/maps/dungeon-map.jpg docs/videos
-          git diff --cached --quiet || git commit -m "Add tavern art and the two walkthrough videos"
+          git add -A
+          git diff --cached --quiet || git commit -m "Add the living-room table source"
           git push
