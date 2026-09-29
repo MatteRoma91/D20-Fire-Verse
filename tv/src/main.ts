@@ -3,13 +3,14 @@ import "@fontsource/cinzel/700.css";
 import "@fontsource-variable/literata/opsz.css";
 import "@fontsource-variable/literata/opsz-italic.css";
 import "./styles.css";
-import { describeError, srdLabel } from "@d20-fireverse/protocol";
+import { describeError, scriptRuns, srdLabel, type CastMember } from "@d20-fireverse/protocol";
 import { normalizeScene, sceneLabel, unlockAudio, type RoomScene } from "./audio";
 import { mountChargen, type ChargenCatalog } from "./chargen-ui";
 import { CombatUi } from "./combat-ui";
 import { isD20, rollD20 } from "./dice3d";
 import { DUNGEON_ROOMS, roomForNode, type DungeonRoomId } from "./dungeon-map";
 import { onMusicChange, setMusic, toggleMusic, type MusicTrack } from "./music";
+import { registerNativeBack } from "./native";
 import { moveFocus, ownsArrows, remoteKey, restoreFocus, setScopeProvider, type RemoteKey } from "./nav";
 import { companionUrl, qrSvg, REMOTE_LEGEND } from "./onboarding";
 import { puzzleBack, puzzleKindForNode, renderInteractivePuzzle } from "./puzzles";
@@ -20,7 +21,7 @@ import { closeSettings, openSettings, settingsOpen } from "./settings-ui";
 import { onSettings, settings } from "./settings";
 import { sfx } from "./sfx";
 import type { Pregen, RoomState } from "./types";
-import { isNarrating, onSpokenCue, prefetchVoice, replayNarration, speak, stopNarration } from "./voice";
+import { isNarrating, onSpokenCue, prefetchVoice, replayNarration, setCast, speak, stopNarration } from "./voice";
 
 type PageId = "home" | "lobby" | "story" | "combat";
 
@@ -130,6 +131,11 @@ appRoot.innerHTML = `
   </main>
 
   <div class="subtitles" id="subtitles" aria-live="polite" hidden><p></p></div>
+  <div class="speaker-plate" id="speakerPlate" aria-hidden="true">
+    <span class="sp-sigil"></span>
+    <span class="sp-text"><strong></strong><small></small></span>
+    <span class="sp-wave"><i></i><i></i><i></i><i></i><i></i></span>
+  </div>
   <div class="turn-banner" id="turnBanner" hidden><strong></strong><span></span></div>
   <div class="victory-banner" id="victoryBanner" hidden><p>Victory</p><span>The last of them falls.</span></div>
   <div class="modal defeat-modal" id="defeatModal" hidden role="dialog" aria-label="The party has fallen">
@@ -263,14 +269,17 @@ function caption(text: string) {
   showSubtitle(text, 3800);
 }
 
-function showSubtitle(text: string, hold = 0) {
+function showSubtitle(text: string, hold = 0, speaker: string | null = null) {
   const s = settings();
   const el = $("subtitles");
   if (!s.subtitles || !text) {
     el.hidden = true;
     return;
   }
-  el.querySelector("p")!.textContent = text;
+  const who = speaker ? state?.cast?.[speaker] : undefined;
+  el.querySelector("p")!.innerHTML = who
+    ? `<b class="sub-who" style="${whoStyle(who.color)}">${esc(who.name)}</b>${esc(text)}`
+    : esc(text);
   if (page === "combat") {
     const r = $("board").getBoundingClientRect();
     el.style.setProperty("--subs-top", `${Math.round(r.bottom - 16)}px`);
@@ -281,7 +290,36 @@ function showSubtitle(text: string, hold = 0) {
   if (hold) captionTimer = window.setTimeout(() => el.classList.add("fade"), hold);
 }
 
+/** CSS custom properties for a speaker's colour, as hex and as an rgb triplet for translucent tints. */
+function whoStyle(color: string): string {
+  const hex = /^#([0-9a-f]{6})$/i.exec(color)?.[1] ?? "f1c46b";
+  const n = parseInt(hex, 16);
+  return `--who:#${hex};--who-rgb:${(n >> 16) & 255},${(n >> 8) & 255},${n & 255}`;
+}
+
+let plateSpeaker: string | null = null;
+
+/** The nameplate of whoever is speaking right now; the narrator has none. */
+function showSpeaker(speaker: string | null) {
+  if (speaker === plateSpeaker) return;
+  plateSpeaker = speaker;
+  const plate = $("speakerPlate");
+  const who = speaker ? state?.cast?.[speaker] : undefined;
+  if (!who) {
+    plate.classList.remove("on");
+    return;
+  }
+  plate.setAttribute("style", whoStyle(who.color));
+  plate.querySelector(".sp-sigil")!.textContent = who.name.replace(/^The\s+/i, "")[0] ?? "";
+  plate.querySelector("strong")!.textContent = who.name;
+  plate.querySelector("small")!.textContent = who.title;
+  plate.classList.remove("on");
+  void plate.offsetWidth;
+  plate.classList.add("on");
+}
+
 onSpokenCue((cue) => {
+  showSpeaker(cue?.speaker ?? null);
   const box = $("narration");
   box.querySelectorAll(".spoken").forEach((n) => {
     n.classList.remove("spoken");
@@ -302,7 +340,7 @@ onSpokenCue((cue) => {
     $("subtitles").hidden = true;
     return;
   }
-  showSubtitle(cue.text);
+  showSubtitle(cue.text, 0, cue.speaker);
 });
 
 onSettings(() => {
@@ -533,12 +571,23 @@ function renderParty() {
 
 // ------------------------------------------------------------------ story
 
-function sentences(text: string): string {
+function sentenceSpans(text: string): string {
+  const parts = text.match(/[^.!?…]+[.!?…]+["')\]]*\s*|[^.!?…]+$/g) ?? [text];
+  return parts.map((s) => `<span class="sent">${esc(s)}</span>`).join("");
+}
+
+/** Narration as prose; spoken lines become quotes signed with the speaker's name and colour. */
+function sentences(text: string, cast: Record<string, CastMember> = {}): string {
   return text
     .split(/\n{2,}/)
     .map((para) => {
-      const parts = para.match(/[^.!?…]+[.!?…]+["')\]]*\s*|[^.!?…]+$/g) ?? [para];
-      return `<p>${parts.map((s) => `<span class="sent">${esc(s)}</span>`).join("")}</p>`;
+      const runs = scriptRuns(para).map((run) => {
+        const who = run.speaker ? cast[run.speaker] : undefined;
+        if (!run.speaker) return sentenceSpans(run.text);
+        if (!who) return `“${sentenceSpans(run.text)}”`;
+        return `<span class="quote" style="${whoStyle(who.color)}"><span class="who">${esc(who.name)}</span>“${sentenceSpans(run.text)}”</span>`;
+      });
+      return `<p>${runs.join("")}</p>`;
     })
     .join("");
 }
@@ -654,7 +703,7 @@ async function renderStory(s: RoomState) {
   const box = $("narration");
   const text = s.narration ?? "";
   if (fresh) {
-    box.innerHTML = sentences(text);
+    box.innerHTML = sentences(text, s.cast);
     box.classList.remove("line-in");
     void box.offsetWidth;
     box.classList.add("line-in");
@@ -742,6 +791,7 @@ async function routeNow() {
 
 function onRoomState(next: RoomState) {
   state = next;
+  setCast(next.cast);
   if (next.localPlayerId) playerId = next.localPlayerId;
   joining = false;
   pendingRejoin = null;
@@ -884,12 +934,18 @@ function handleBack(): boolean {
     renderChoices(state);
     return true;
   }
-  if (page === "story" || page === "home") {
+  if (page === "story") {
+    stopNarration();
+    return true;
+  }
+  if (page === "home" && isNarrating()) {
     stopNarration();
     return true;
   }
   return false;
 }
+
+registerNativeBack(() => page === "home" && !settingsOpen() && !document.querySelector(".modal:not([hidden])"));
 
 window.addEventListener("keydown", (e) => {
   unlockAudio();

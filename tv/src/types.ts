@@ -111,6 +111,8 @@ export type CombatPublic = {
 
 export type Voice = { key: string | null; seq: number; text: string };
 
+export type { CastMember } from "@d20-fireverse/protocol";
+
 export type Player = {
   playerId: string;
   displayName: string;
@@ -127,6 +129,8 @@ export type RoomState = {
   alexaScene?: string;
   narration?: string;
   narrationSeq: number;
+  /** Speaking characters by id, for nameplates and subtitles. */
+  cast?: Record<string, import("@d20-fireverse/protocol").CastMember>;
   voice: Voice | null;
   choices: Array<{ id: string; label: string }>;
   skillCheck?: { ability: string; skill?: string; dc: number };

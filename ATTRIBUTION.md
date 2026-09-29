@@ -26,9 +26,9 @@ They are covered by the repository's MIT license.
 Everything in `tv/public/audio/sfx/` is synthesized from scratch by `tools/sfx/render.py` (noise,
 oscillators and filters — no samples or recordings). Covered by the repository's MIT license.
 
-### Narrator voice
+### Narrator and character voices
 
-The narrator is generated at runtime by **Kokoro-82M** (hexgrad, Apache-2.0), loaded through
+The narrator and every character voice are generated at runtime by **Kokoro-82M** (hexgrad, Apache-2.0), loaded through
 `kokoro-js` from the ONNX export `onnx-community/Kokoro-82M-v1.0-ONNX`.
 Model card and license: https://huggingface.co/hexgrad/Kokoro-82M. The model is downloaded on first
 run and is not redistributed in this repository. Rendered clips are a cache, not shipped assets.
@@ -42,9 +42,10 @@ for this project and are covered by the repository's MIT license.
 
 Self-hosted through Fontsource, both under the SIL Open Font License 1.1:
 
-- **Cinzel** — Natanael Gama — https://fonts.google.com/specimen/Cinzel
+- **Cinzel** — Natanael Gama — https://fonts.google.com/specimen/Cinzel (also bundled in the Fire TV app as `firetv/app/src/main/assets/fonts/Cinzel-Bold.ttf`)
 - **Literata** — TypeTogether for Google — https://fonts.google.com/specimen/Literata
 
 ### Libraries
 
-PixiJS (MIT), three.js (MIT), qrcode-generator (MIT), Express (MIT), ws (MIT), Vite (MIT).
+PixiJS (MIT), three.js (MIT), qrcode-generator (MIT), Express (MIT), ws (MIT), bonjour-service (MIT), Vite (MIT).
+The Fire TV app uses only the Android framework and the Kotlin standard library (Apache-2.0).

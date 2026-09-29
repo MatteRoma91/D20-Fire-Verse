@@ -150,3 +150,52 @@ export function srdLabel(id: string | undefined | null): string {
   const words = id.split(/[_\s]+/).filter(Boolean).map((w) => w[0]!.toUpperCase() + w.slice(1).toLowerCase());
   return words[0] === "Half" && words.length === 2 ? words.join("-") : words.join(" ");
 }
+
+/**
+ * Spoken lines inside narration: `[[glowkindle: Drink. Then we talk.]]`.
+ * Everything outside the brackets belongs to the narrator. A line never spans a blank line.
+ */
+const SPOKEN_LINE = /\[\[([a-z][a-z0-9_]*):\s*([\s\S]*?)\s*\]\]/g;
+
+/** Who speaks, as the table shows them. The voice itself is rendered by the server. */
+export type CastMember = { name: string; title: string; color: string; pitch: number };
+
+export type ScriptLine = { speaker: string | null; text: string };
+
+/** Narration split into who-says-what, in order. Narrator pieces have `speaker: null`. */
+export function scriptLines(text: string): ScriptLine[] {
+  const out: ScriptLine[] = [];
+  const push = (speaker: string | null, piece: string) => {
+    const t = piece.replace(/[ \t]+/g, " ").replace(/^[ \t]+|[ \t]+$/gm, "");
+    if (!t.trim()) return;
+    const last = out[out.length - 1];
+    if (last && last.speaker === speaker) last.text = `${last.text} ${t.trim()}`;
+    else out.push({ speaker, text: t.trim() });
+  };
+  let at = 0;
+  for (const m of text.matchAll(SPOKEN_LINE)) {
+    push(null, text.slice(at, m.index));
+    push(m[1]!, m[2]!);
+    at = m.index! + m[0].length;
+  }
+  push(null, text.slice(at));
+  return out;
+}
+
+/** Narration as prose: spoken lines become quotations. */
+export function plainNarration(text: string | undefined | null): string {
+  return (text ?? "").replace(SPOKEN_LINE, (_m, _id: string, line: string) => `“${line}”`);
+}
+
+/** Split a narration paragraph into narrator and spoken runs, keeping whitespace for display. */
+export function scriptRuns(paragraph: string): ScriptLine[] {
+  const out: ScriptLine[] = [];
+  let at = 0;
+  for (const m of paragraph.matchAll(SPOKEN_LINE)) {
+    if (m.index! > at) out.push({ speaker: null, text: paragraph.slice(at, m.index) });
+    out.push({ speaker: m[1]!, text: m[2]! });
+    at = m.index! + m[0].length;
+  }
+  if (at < paragraph.length) out.push({ speaker: null, text: paragraph.slice(at) });
+  return out;
+}

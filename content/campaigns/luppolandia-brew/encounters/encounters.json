@@ -146,8 +146,8 @@
       ]
     },
     "victory": "all_enemies_defeated",
-    "intro": "The ceiling moves. Ember silk drips like molten glass as the Infernal Spider unfolds, eight burning eyes fixed on you. This is the thing that has been poisoning the brew.",
-    "outro": "The Infernal Spider shrieks, and its fire gutters out. It folds in on itself and crashes to the laboratory floor. The silk goes dark all at once."
+    "intro": "The ceiling moves. Ember silk drips like molten glass as the Infernal Spider unfolds, eight burning eyes fixed on you. This is the thing that has been poisoning the brew. [[spider: You drank from my nest, little brewers. Now I drink from you.]]",
+    "outro": "[[spider: My silk… my children…]] The Infernal Spider shrieks, and its fire gutters out. It folds in on itself and crashes to the laboratory floor. The silk goes dark all at once."
   },
   "corridor_magma_rat": {
     "id": "corridor_magma_rat",
@@ -178,7 +178,7 @@
       ]
     },
     "victory": "all_enemies_defeated",
-    "intro": "The mosaic cracks and glows. A rat the size of a pony drags itself out of the heat, fur smoking, lava dripping from its jaws. The exit tax has come due.",
+    "intro": "The mosaic cracks and glows. A rat the size of a pony drags itself out of the heat, fur smoking, lava dripping from its jaws. The exit tax has come due. [[magma_rat: Mmm. Heroes, lightly roasted.]]",
     "outro": "The Magma Rat hisses one last cloud of steam and cools into black stone. The way up to the brewery is clear."
   }
 }

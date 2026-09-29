@@ -1,7 +1,7 @@
 import "@fontsource/cinzel/700.css";
 import "@fontsource-variable/literata/opsz.css";
 import "./styles.css";
-import { describeError, srdLabel } from "@d20-fireverse/protocol";
+import { describeError, plainNarration, srdLabel } from "@d20-fireverse/protocol";
 
 interface SpeechAlt {
   readonly transcript: string;
@@ -257,7 +257,7 @@ function renderSeat() {
       send({ action: "CHOOSE", roomCode: s.roomCode, choiceId: b.dataset.choice });
     }),
   );
-  $("narr").textContent = (s.narration ?? "").split(/\n{2,}/)[0]!.slice(0, 320);
+  $("narr").textContent = plainNarration(s.narration).split(/\n{2,}/)[0]!.slice(0, 320);
 }
 
 function connect() {

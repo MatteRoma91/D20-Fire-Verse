@@ -10,6 +10,8 @@
     "test": "node --import tsx --import ./test/setup.ts --test test/*.test.ts"
   },
   "dependencies": {
+    "@d20-fireverse/protocol": "*",
+    "bonjour-service": "^1.4.4",
     "express": "^4.21.2",
     "kokoro-js": "^1.2.1",
     "ws": "^8.18.0"

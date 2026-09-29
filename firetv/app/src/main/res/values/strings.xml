@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">D20 FireVerse</string>
+    <string name="kicker">Luppolandia · A tabletop for the living room</string>
+    <string name="finding">Looking for your table on this Wi‑Fi…</string>
+    <string name="finding_none">No table answered yet. Start the table server on a computer on this Wi‑Fi, or type its address below.</string>
+    <string name="reaching">Reaching the table at %1$s…</string>
+    <string name="unreachable">The table at %1$s didn\'t answer. Is the server running on the same Wi‑Fi?</string>
+    <string name="lost">Lost the table at %1$s. Pick it again, or try another address.</string>
+    <string name="renderer_lost">The table at %1$s keeps closing on this TV. Restart the Fire TV or update its system, then try again.</string>
+    <string name="found_status">Found your table. Pick it to sit down.</string>
+    <string name="table_entry">%1$s  ·  %2$s</string>
+    <string name="found_heading">Tables on this Wi‑Fi</string>
+    <string name="manual_heading">Or type the table address</string>
+    <string name="manual_hint">192.168.1.20:3100</string>
+    <string name="connect">Connect</string>
+    <string name="retry">Search again</string>
+    <string name="bad_address">That doesn\'t look like an address. Try something like 192.168.1.20:3100.</string>
+    <string name="exit_again">Press Back again to leave the table</string>
+    <string name="footer">The table server runs on your computer: npm run dev:backend</string>
+</resources>

@@ -1,5 +1,6 @@
 /** Settings, opened with Menu: every row is one D-pad stop, ◀ ▶ change its value. */
 
+import { nativeApp } from "./native";
 import { REMOTE_LEGEND, resetCoach } from "./onboarding";
 import { settings, updateSettings, type Settings, type SubtitleSize } from "./settings";
 import { sfx } from "./sfx";
@@ -127,6 +128,7 @@ export function openSettings(onClose?: () => void) {
         <div class="row modal-actions">
           <button type="button" class="ghost" id="setReplay">Hear the last line again</button>
           <button type="button" class="ghost" id="setCoach">Show first-fight tips again</button>
+          ${nativeApp() ? `<button type="button" class="ghost" id="setTable">Change table server</button>` : ""}
           <button type="button" class="primary" id="setClose" data-autofocus>Back to the table</button>
         </div>
       </div>`;
@@ -146,6 +148,10 @@ export function openSettings(onClose?: () => void) {
     overlay.querySelector("#setReplay")!.addEventListener("click", () => {
       closeSettings();
       replayNarration();
+    });
+    overlay.querySelector("#setTable")?.addEventListener("click", () => {
+      closeSettings();
+      nativeApp()?.changeTable();
     });
     overlay.querySelector("#setCoach")!.addEventListener("click", () => {
       resetCoach();

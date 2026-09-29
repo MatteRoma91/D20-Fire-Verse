@@ -1,6 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import { getCustomCharacter, listCustomCharacters } from "./chargen.js";
+import type { CastMember } from "@d20-fireverse/protocol";
+import { configureVoices, type VoiceFx } from "./narration.js";
 import { CAMPAIGN_DIR, CONTENT_ROOT, readJson } from "./paths.js";
 import { PORTRAITS, defaultPortrait, isPortraitId, portraitUrl } from "./portraits.js";
 
@@ -9,7 +11,19 @@ export type Manifest = {
   title: string;
   startNodeId: string;
   pregenIds: string[];
+  /** Speaking characters: how the table shows them and how the server voices them. */
+  cast?: Record<string, CastDef>;
   alexaHints?: Record<string, unknown>;
+};
+
+export type CastDef = {
+  name: string;
+  title: string;
+  color: string;
+  voice: string;
+  speed: number;
+  pitch?: number;
+  fx?: VoiceFx;
 };
 
 export type StoryNode = {
@@ -145,6 +159,7 @@ export function loadCampaign(): void {
   abilities = readJson<Record<string, AbilityDef>>(
     path.join(CONTENT_ROOT, "abilities", "oneshot_v1.json"),
   );
+  configureVoices(manifest.cast);
   pregens = {};
   for (const id of manifest.pregenIds) {
     const file = path.join(CAMPAIGN_DIR, "pregens", `${id}.json`);
@@ -156,6 +171,13 @@ export function loadCampaign(): void {
 
 export function getManifest(): Manifest {
   return manifest;
+}
+
+/** The cast as the table shows it; voices stay on the server. */
+export function publicCast(): Record<string, CastMember> {
+  return Object.fromEntries(
+    Object.entries(manifest.cast ?? {}).map(([id, c]) => [id, { name: c.name, title: c.title, color: c.color, pitch: c.pitch ?? 1 }]),
+  );
 }
 
 export function getNode(id: string): StoryNode | undefined {

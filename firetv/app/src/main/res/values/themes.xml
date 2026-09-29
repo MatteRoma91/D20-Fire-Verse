@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.FireVerse" parent="@android:style/Theme.Material.NoActionBar.Fullscreen">
+        <item name="android:windowBackground">@drawable/launch_background</item>
+        <item name="android:colorAccent">@color/gold</item>
+        <item name="android:colorPrimary">@color/night</item>
+        <item name="android:colorPrimaryDark">@color/night</item>
+        <item name="android:statusBarColor">@color/night</item>
+        <item name="android:navigationBarColor">@color/night</item>
+        <item name="android:textColorPrimary">@color/ink</item>
+        <item name="android:textColorHint">#80C9B79B</item>
+    </style>
+</resources>

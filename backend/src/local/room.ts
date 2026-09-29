@@ -8,6 +8,7 @@ import {
   getPregen,
   loadCampaign,
   portraitForCharacter,
+  publicCast,
   type StoryNode,
 } from "./campaign.js";
 import {
@@ -329,6 +330,7 @@ export function publicState(room: Room, viewerPlayerId?: string) {
     alexaScene: publishedScene(room, node),
     narration: room.lastNarration,
     narrationSeq: seq,
+    cast: publicCast(),
     voice: voiceFor(room.voiceText ?? room.lastNarration, seq),
     choices: choices.map((c) => ({ id: c.id, label: c.label })),
     skillCheck: node?.type === "skill_check" ? node.check : undefined,

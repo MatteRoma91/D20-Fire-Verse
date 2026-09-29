@@ -60,7 +60,12 @@ test("a defeat can be retried from the top, never leaving a dead board", () => {
   combat.status = "defeat";
   for (const t of combat.tokens) if (t.kind === "pc") t.dead = true;
   assert.throws(() => combatEndTurn(room.roomCode, playerId), /COMBAT_OVER/);
-  retryCombat(room.roomCode);
+  const restore = scriptDice([[20, 20], ...Array.from({ length: 8 }, () => [20, 1] as [number, number])]);
+  try {
+    retryCombat(room.roomCode);
+  } finally {
+    restore();
+  }
   assert.equal(room.combat?.status, "active");
   assert.ok(room.combat?.tokens.filter((t) => t.kind === "pc").every((t) => !t.dead && t.hp === t.maxHp));
   assert.match(room.lastNarration ?? "", /anew/);
