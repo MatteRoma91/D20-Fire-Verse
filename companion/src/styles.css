@@ -93,6 +93,24 @@ input { width: 100%; padding: 0.85rem 1rem; border-radius: 11px; border: 1px sol
 .controls:empty { display: none; }
 .controls b { display: inline-grid; place-items: center; width: 1.6rem; height: 1.6rem; margin-right: 0.6rem; border-radius: 50%; border: 1px solid rgba(246, 234, 214, 0.3); font-family: Cinzel, serif; font-size: 0.8rem; color: var(--gold); }
 .narr { margin: 0.9rem 0 0; line-height: 1.55; color: var(--mute); font-size: 0.95rem; }
+.speaker-inline {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin-bottom: 0.45rem;
+  color: var(--gold);
+  font-family: Cinzel, serif;
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
+}
+.speaker-inline img {
+  width: 2.6rem;
+  height: 2.6rem;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid rgba(241, 196, 107, 0.45);
+}
+.controls button.voted { border-color: var(--gold); box-shadow: 0 0 14px rgba(241, 196, 107, 0.22); }
 .row-end { display: flex; justify-content: flex-end; margin-top: 0.8rem; }
 
 .mic { text-align: center; margin-top: 0.4rem; }
@@ -114,3 +132,7 @@ input { width: 100%; padding: 0.85rem 1rem; border-radius: 11px; border: 1px sol
   font-size: 0.92rem;
 }
 .toast.ok { border-left-color: var(--moss); }
+.login-gate { display: grid; gap: 0.6rem; }
+.login-gate[hidden] { display: none; }
+.login-gate input { width: 100%; box-sizing: border-box; }
+.err { color: #ffb4a2; }

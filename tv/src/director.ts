@@ -254,6 +254,12 @@ export class Director {
             this.board.float(e.tokenId, "Fumble!", "miss");
             break;
           case "miss":
+            if (h.damage > 0) {
+              sfx(sound, { pan, gain: 0.7 });
+              this.board.hit(h.targetId, "graze", e.tokenId);
+              this.board.float(h.targetId, `−${h.damage}`, "damage");
+              break;
+            }
             sfx("miss", { pan });
             this.board.dodge(h.targetId, e.tokenId);
             this.board.float(h.targetId, "Miss", "miss");

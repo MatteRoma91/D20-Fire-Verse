@@ -39,6 +39,17 @@ appRoot.innerHTML = `
     <div class="menu-hint" aria-hidden="true"><kbd>☰</kbd> Settings</div>
   </header>
 
+  <div class="login-gate" id="loginGate">
+    <form class="login-card" id="loginForm">
+      <p class="home-kicker">The table</p>
+      <h2>Sign in</h2>
+      <label>Username <input id="loginUser" autocomplete="username" data-autofocus /></label>
+      <label>Password <input id="loginPass" type="password" autocomplete="current-password" /></label>
+      <button type="submit" class="primary">Enter</button>
+      <p class="meta err" id="loginError"></p>
+    </form>
+  </div>
+
   <main class="pages">
     <section class="page page-home active" id="pageHome" aria-label="Title">
       <div class="home-hero">
@@ -89,8 +100,15 @@ appRoot.innerHTML = `
       <div class="story-frame">
         <p class="story-chapter" id="storyChapter"></p>
         <h1 class="story-title" id="storyTitle"></h1>
-        <div class="story-narration" id="narration" aria-live="polite"></div>
+        <div class="story-dialogue">
+          <aside class="speaker" id="speakerCard" hidden>
+            <img id="speakerPortrait" alt="" />
+            <span id="speakerName"></span>
+          </aside>
+          <div class="story-narration" id="narration" aria-live="polite"></div>
+        </div>
         <p class="story-dice" id="storyDice" hidden></p>
+        <div id="voteBar" class="vote-bar" hidden></div>
         <div class="dungeon-map-wrap" id="dungeonMapWrap" hidden>
           <img id="dungeonMap" src="/art/dungeon-map.jpg" alt="Map of the brewery cellars" />
           <div class="fog-mask" id="fogMask"></div>
@@ -157,6 +175,7 @@ let pregens: Pregen[] = [];
 let portraits: Array<{ id: string; url: string }> = [];
 let chargenApi: ReturnType<typeof mountChargen> | null = null;
 let page: PageId = "home";
+let campaigns: Array<{ id: string; title: string; version: number }> = [];
 let resumedFirstState = true;
 let lastChapterKey = "";
 let lastStoryKey = "";
@@ -374,7 +393,14 @@ function renderHome() {
         <strong>Continue</strong><span>${esc(session.hero ?? "Your party")}${session.place ? ` · ${esc(session.place)}` : ""}</span>
       </button>`
     : "";
+  const camp =
+    campaigns.length > 1
+      ? `<label class="meta">Campaign <select id="campPick">${campaigns
+          .map((c) => `<option value="${esc(c.id)}">${esc(c.title)}</option>`)
+          .join("")}</select></label>`
+      : "";
   cta.innerHTML = `${cont}
+    ${camp}
     <button type="button" class="${session ? "" : "primary"}" id="btnNew" ${session ? "" : "data-autofocus"}>Begin a new tale</button>
     <button type="button" class="ghost" id="btnLoad">Load a save code</button>
     <button type="button" class="ghost" id="btnSettings">Settings</button>`;
@@ -386,7 +412,8 @@ function renderHome() {
     state = null;
     spectating = false;
     lobbyEntry = null;
-    send({ action: "CREATE_ROOM" });
+    const campaignId = ($("campPick") as HTMLSelectElement | null)?.value || campaigns[0]?.id;
+    send({ action: "CREATE_ROOM", campaignId });
     showPage("lobby");
     renderLobby();
   });
@@ -585,33 +612,79 @@ function renderMap(s: RoomState) {
 function renderChoices(s: RoomState) {
   const box = $("choices");
   const puzzleHost = $("puzzleHost");
+  const voteBar = $("voteBar");
   box.innerHTML = "";
   puzzleHost.innerHTML = "";
-  const choose = (choiceId: string) => {
+  voteBar.hidden = true;
+  voteBar.innerHTML = "";
+
+  const cast = (choiceId: string) => {
     if (storyBusy) return;
     storyBusy = true;
     box.querySelectorAll("button").forEach((b) => b.setAttribute("aria-busy", "true"));
     sfx("uiConfirm");
-    send({ action: "CHOOSE", roomCode: s.roomCode, choiceId });
+    if (s.players.length > 1) {
+      send({ action: "CAST_VOTE", roomCode: s.roomCode, playerId, choiceId });
+    } else {
+      send({ action: "CHOOSE", roomCode: s.roomCode, playerId, choiceId });
+    }
     window.setTimeout(() => (storyBusy = false), 2500);
   };
+
   if (puzzleKindForNode(s.nodeId)) {
     renderInteractivePuzzle(puzzleHost, {
       nodeId: s.nodeId,
       progress: s.puzzle,
-      onChoose: choose,
+      localPlayerId: playerId,
+      playerCount: s.players.length,
+      onChoose: (choiceId) => send({ action: "CHOOSE", roomCode: s.roomCode, playerId, choiceId }),
       onSolve: (sequence) => {
         sfx("uiConfirm");
-        send({ action: "SOLVE_PUZZLE", roomCode: s.roomCode, sequence });
+        send({ action: "SOLVE_PUZZLE", roomCode: s.roomCode, playerId, sequence });
       },
+      onClaim: () => send({ action: "CLAIM_PUZZLE", roomCode: s.roomCode, playerId }),
+      onRelease: () => send({ action: "RELEASE_PUZZLE", roomCode: s.roomCode, playerId }),
+      onHint: (slot, optionId) =>
+        send({ action: "PUZZLE_HINT", roomCode: s.roomCode, playerId, slot, optionId }),
+      onDraft: (puzzleDraft) =>
+        send({ action: "PUZZLE_DRAFT", roomCode: s.roomCode, playerId, puzzleDraft }),
     });
     return;
   }
+
   if (s.nodeType === "skill_check" && s.skillCheck) {
     const c = s.skillCheck;
     const skill = (c.skill ?? c.ability).replace(/_/g, " ").replace(/\b\w/g, (m) => m.toUpperCase());
-    box.innerHTML = `<button type="button" class="choice primary guided" data-choice="attempt" data-autofocus><span class="choice-n">d20</span><span>Roll ${esc(skill)} — difficulty ${c.dc}</span></button>`;
-  } else if (s.nodeId === "END_SAVE" || s.nodeId === "END_WIN") {
+    const roster = s.checkOffer?.roster ?? [];
+    const helpers = new Set(s.checkOffer?.helpers ?? []);
+    box.innerHTML = `
+      <p class="meta">Who attempts ${esc(skill)} (DC ${c.dc})? Help from an ally grants advantage — pledge it before they roll.</p>
+      <div class="check-roster">${roster
+        .map((r) => {
+          const mine = r.playerId === playerId;
+          return `<button type="button" class="choice ${mine ? "primary" : ""}" data-volunteer="${esc(r.playerId)}" ${mine ? "" : "disabled"} title="${mine ? "Step up" : "Only they can volunteer"}"><span class="choice-n">${r.bonus >= 0 ? "+" : ""}${r.bonus}</span><span>${esc(r.name)}${helpers.has(r.playerId) ? " · helping" : ""}</span></button>`;
+        })
+        .join("")}
+      </div>
+      ${
+        playerId && roster.some((r) => r.playerId !== playerId)
+          ? `<button type="button" class="choice" id="btnHelp">Pledge Help (advantage)</button>`
+          : ""
+      }`;
+    box.querySelectorAll<HTMLElement>("[data-volunteer]").forEach((b) =>
+      b.addEventListener("click", () => {
+        if (b.hasAttribute("disabled") || b.dataset.volunteer !== playerId) return;
+        sfx("uiConfirm");
+        send({ action: "VOLUNTEER_CHECK", roomCode: s.roomCode, playerId });
+      }),
+    );
+    box.querySelector("#btnHelp")?.addEventListener("click", () =>
+      send({ action: "VOLUNTEER_CHECK", roomCode: s.roomCode, playerId, help: true }),
+    );
+    return;
+  }
+
+  if (s.nodeId === "END_SAVE" || s.nodeId === "END_WIN") {
     box.innerHTML = `<button type="button" class="choice primary" id="btnHome" data-autofocus><span class="choice-n">↩</span><span>${s.nodeId === "END_WIN" ? "Return to the title" : "Rest here — return to the title"}</span></button>`;
     $("btnHome").addEventListener("click", () => {
       sfx("uiConfirm");
@@ -620,21 +693,42 @@ function renderChoices(s: RoomState) {
       showPage("home");
     });
     return;
-  } else if (s.nodeType === "encounter" && !s.combat) {
+  }
+  if (s.nodeType === "encounter" && !s.combat) {
     box.innerHTML = `<button type="button" class="choice primary" id="btnRetryFight" data-autofocus><span class="choice-n">⚔</span><span>Face them again</span></button>
       <button type="button" class="choice" id="btnStepBack"><span class="choice-n">↩</span><span>Step back to safer ground</span></button>`;
     $("btnRetryFight").addEventListener("click", () => send({ action: "RETRY_COMBAT", roomCode: s.roomCode }));
     $("btnStepBack").addEventListener("click", () => send({ action: "WITHDRAW", roomCode: s.roomCode }));
     return;
-  } else {
-    box.innerHTML = s.choices
-      .map(
-        (ch, i) =>
-          `<button type="button" class="choice ${i === 0 ? "primary guided" : ""}" data-choice="${esc(ch.id)}" ${i === 0 ? "data-autofocus" : ""}><span class="choice-n">${i + 1}</span><span>${esc(ch.label)}</span></button>`,
-      )
-      .join("");
   }
-  box.querySelectorAll<HTMLElement>("[data-choice]").forEach((b) => b.addEventListener("click", () => choose(b.dataset.choice!)));
+
+  if (s.vote && s.players.length > 1) {
+    const sec = Math.ceil(s.vote.remainingMs / 1000);
+    voteBar.hidden = false;
+    voteBar.innerHTML = `<span class="vote-chip timer">Party vote · ${sec}s</span>
+      <button type="button" class="ghost" id="btnCloseVote">Decide now</button>`;
+    $("btnCloseVote")?.addEventListener("click", () =>
+      send({ action: "CLOSE_VOTE", roomCode: s.roomCode, playerId }),
+    );
+  }
+
+  box.innerHTML = s.choices
+    .map((ch, i) => {
+      const voters = s.vote?.votes.filter((v) => v.choiceId === ch.id) ?? [];
+      const mine = voters.some((v) => v.playerId === playerId);
+      const pawns = voters
+        .map((v) =>
+          v.portrait
+            ? `<img class="choice-pawn" src="${esc(v.portrait)}" alt="" title="${esc(v.name)}" />`
+            : `<i class="choice-pawn" title="${esc(v.name)}">${esc(v.name.slice(0, 1))}</i>`,
+        )
+        .join("");
+      return `<button type="button" class="choice ${i === 0 ? "primary guided" : ""} ${mine ? "voted" : ""}" data-choice="${esc(ch.id)}" ${i === 0 ? "data-autofocus" : ""}><span class="choice-n">${i + 1}</span><span>${esc(ch.label)}</span>${pawns ? `<span class="choice-votes">${pawns}</span>` : ""}</button>`;
+    })
+    .join("");
+  box.querySelectorAll<HTMLElement>("[data-choice]").forEach((b) =>
+    b.addEventListener("click", () => cast(b.dataset.choice!)),
+  );
 }
 
 async function renderStory(s: RoomState) {
@@ -653,6 +747,14 @@ async function renderStory(s: RoomState) {
   lastStoryKey = storyKey;
   const box = $("narration");
   const text = s.narration ?? "";
+  const speakerCard = $("speakerCard");
+  if (s.speaker?.portrait) {
+    speakerCard.hidden = false;
+    ($("speakerPortrait") as HTMLImageElement).src = s.speaker.portrait;
+    $("speakerName").textContent = s.speaker.name;
+  } else {
+    speakerCard.hidden = true;
+  }
   if (fresh) {
     box.innerHTML = sentences(text);
     box.classList.remove("line-in");
@@ -660,7 +762,8 @@ async function renderStory(s: RoomState) {
     box.classList.add("line-in");
   }
 
-  const dice = s.lastDice;
+  const diceList = (s.diceQueue?.length ? s.diceQueue : s.lastDice ? [s.lastDice] : []).filter(isD20);
+  const dice = diceList[diceList.length - 1];
   const diceLine = $("storyDice");
   if (dice) {
     const vs = dice.vs ? ` vs ${dice.vs.kind} ${dice.vs.value}` : "";
@@ -674,10 +777,18 @@ async function renderStory(s: RoomState) {
   prefetchVoice(s.voice);
   if (!fresh) return;
 
-  if (dice && dice.id !== lastDiceId && isD20(dice) && !resumedFirstState) {
-    lastDiceId = dice.id;
+  if (fresh && s.fx === "arrows") {
+    sfx("arrow", { gain: 0.85, jitter: 0.02 });
+  }
+
+  if (dice && diceList.some((d) => d.id !== lastDiceId) && !resumedFirstState && fresh) {
     box.classList.add("held");
-    await rollD20(dice);
+    for (const roll of diceList) {
+      if (roll.id === lastDiceId) continue;
+      lastDiceId = roll.id;
+      await rollD20(roll);
+      if (roll.outcome === "fail") sfx("arrowHit", { gain: 0.55, delay: 0.05 });
+    }
     box.classList.remove("held");
   } else if (dice) lastDiceId = dice.id;
 
@@ -813,6 +924,7 @@ function connect() {
     }
     switch (msg.eventType) {
       case "HELLO": {
+        campaigns = msg.payload.campaigns ?? [];
         pregens = msg.payload.pregens ?? [];
         portraits = msg.payload.portraits ?? [];
         const catalog = msg.payload.chargen as ChargenCatalog | undefined;
@@ -959,8 +1071,41 @@ void ({} as RemoteKey);
 
 setScene(ART.home, "warm");
 renderHome();
-requestAnimationFrame(() => restoreFocus());
-connect();
+
+async function ensureLogin(): Promise<void> {
+  const me = await fetch("/api/me", { credentials: "same-origin" });
+  if (me.ok) {
+    $("loginGate").hidden = true;
+    return;
+  }
+  $("loginGate").hidden = false;
+  await new Promise<void>((resolve) => {
+    $("loginForm").addEventListener("submit", async (ev) => {
+      ev.preventDefault();
+      $("loginError").textContent = "";
+      const res = await fetch("/api/login", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: ($("loginUser") as HTMLInputElement).value,
+          password: ($("loginPass") as HTMLInputElement).value,
+        }),
+      });
+      if (!res.ok) {
+        $("loginError").textContent = "That username or password is wrong.";
+        return;
+      }
+      $("loginGate").hidden = true;
+      resolve();
+    });
+  });
+}
+
+void ensureLogin().then(() => {
+  requestAnimationFrame(() => restoreFocus());
+  connect();
+});
 
 if (import.meta.env.DEV) {
   (window as unknown as { __table: object }).__table = { isNarrating, page: () => page };

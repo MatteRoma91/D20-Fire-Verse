@@ -11,6 +11,8 @@ export const PORTRAITS = [
   "cg_woodelf",
   "cg_bard",
   "cg_gnome",
+  "glowkindle",
+  "messenger",
 ] as const;
 
 export type PortraitId = (typeof PORTRAITS)[number];

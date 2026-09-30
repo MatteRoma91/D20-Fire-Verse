@@ -494,6 +494,25 @@ def bow() -> np.ndarray:
     return trim(normalize(room(out, 0.4, 0.15, 54), 0.7))
 
 
+def arrow_loft() -> np.ndarray:
+    """A slit-bow: string, then a short hiss down the corridor."""
+    r = rng(80)
+    t = t_axis(0.22)
+    twang = sine(220 * (1 + 0.03 * np.exp(-t / 0.015)), 0.22) * env_ad(len(t), 0.001, 0.05)
+    hiss = whoosh(r, 0.28, 1800, 7000, 0.25)
+    out = mix_at(silence(0.7), twang * 0.7, 0)
+    out = mix_at(out, hiss * 0.45, 0.06)
+    return trim(normalize(room(out, 0.55, 0.16, 80), 0.65))
+
+
+def arrow_hit() -> np.ndarray:
+    """Arrow in flesh or mortar — a dry thud, not a blade."""
+    r = rng(81)
+    thunk = add(thump(90, 0.16, 0.4) * 0.8, grit(r, 0.04, 400, 2400, 0.01) * 0.35)
+    out = mix_at(silence(0.45), thunk, 0)
+    return trim(normalize(room(out, 0.35, 0.12, 81), 0.55))
+
+
 def web() -> np.ndarray:
     r = rng(55)
     out = whoosh(r, 0.5, 900, 3000, 0.4) * 0.5
@@ -529,6 +548,38 @@ def puzzle_step() -> np.ndarray:
     out = mix_at(silence(0.6), click, 0)
     out = mix_at(out, bell(880, 0.5) * 0.12, 0.02)
     return trim(normalize(room(out, 0.5, 0.2, 62), 0.55))
+
+
+def puzzle_lock() -> np.ndarray:
+    """Stone gear seating into place — a firm lock clack with a short ring."""
+    r = rng(70)
+    body = add(thump(140, 0.18, 0.35) * 0.7, grit(r, 0.04, 800, 4000, 0.008) * 0.45)
+    ring = add(bell(523.25, 0.7) * 0.2, bell(784.0, 0.45) * 0.1)
+    out = mix_at(silence(0.9), body, 0)
+    out = mix_at(out, ring, 0.04)
+    return trim(normalize(room(out, 0.45, 0.18, 70), 0.6))
+
+
+def puzzle_reset() -> np.ndarray:
+    """Tiles spring back / mechanisms spit — a rising scrape then a soft dump."""
+    r = rng(71)
+    scrape = bandpass(r.standard_normal(int(0.28 * SR)).astype(F32), 400, 3200) * env_ad(int(0.28 * SR), 0.02, 0.12)
+    dump = add(thump(90, 0.22, 0.25) * 0.55, grit(r, 0.08, 200, 1800, 0.02) * 0.35)
+    out = mix_at(silence(1.0), scrape * 0.7, 0)
+    out = mix_at(out, dump, 0.18)
+    return trim(normalize(room(out, 0.55, 0.22, 71), 0.55))
+
+
+def puzzle_pour() -> np.ndarray:
+    """Liquid veil pouring into a vial — filtered noise with a soft glug."""
+    r = rng(72)
+    n = int(0.55 * SR)
+    stream = bandpass(r.standard_normal(n).astype(F32), 500, 4500) * env_ad(n, 0.08, 0.35)
+    glug = thump(110, 0.15, 0.18) * 0.35
+    out = mix_at(silence(1.0), stream * 0.55, 0)
+    out = mix_at(out, glug, 0.12)
+    out = mix_at(out, glug * 0.7, 0.28)
+    return trim(normalize(room(out, 0.4, 0.2, 72), 0.5))
 
 
 def trap() -> np.ndarray:
@@ -571,6 +622,11 @@ CUES: dict[str, Callable[[], np.ndarray]] = {
     "chapter": chapter,
     "seal": seal,
     "puzzle_step": puzzle_step,
+    "puzzle_lock": puzzle_lock,
+    "puzzle_reset": puzzle_reset,
+    "puzzle_pour": puzzle_pour,
+    "arrow": arrow_loft,
+    "arrow_hit": arrow_hit,
     "trap": trap,
 }
 

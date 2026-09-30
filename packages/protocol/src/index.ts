@@ -7,6 +7,13 @@ export type ClientAction =
   | "JOIN_ROOM"
   | "REJOIN"
   | "CHOOSE"
+  | "CAST_VOTE"
+  | "CLOSE_VOTE"
+  | "VOLUNTEER_CHECK"
+  | "CLAIM_PUZZLE"
+  | "RELEASE_PUZZLE"
+  | "PUZZLE_HINT"
+  | "PUZZLE_DRAFT"
   | "SOLVE_PUZZLE"
   | "WITHDRAW"
   | "RETRY_COMBAT"
@@ -59,6 +66,22 @@ export const VOICE_INTENTS = [
 export type VoiceIntent = (typeof VOICE_INTENTS)[number];
 
 const ERROR_TEXT: Record<string, string> = {
+  AUTH_REQUIRED: "Sign in before you take a seat.",
+  BAD_ZIP: "That file is not a campaign archive.",
+  BAD_USERNAME: "Use 2 to 32 letters, numbers, dots, or dashes.",
+  BAD_PASSWORD: "Use at least 4 characters for the password.",
+  BAD_ROLE: "The role must be player or admin.",
+  USERNAME_TAKEN: "That username is already in use.",
+  USER_NOT_FOUND: "That account no longer exists.",
+  BAD_ABILITY_EFFECT: "That ability uses an effect the table does not know.",
+  BAD_CAMPAIGN_ID: "The campaign id may use lowercase letters, numbers, and dashes.",
+  BAD_START_NODE: "The campaign has no starting scene.",
+  BAD_MONSTER: "A fight names a monster that is not in the campaign.",
+  NO_CAMPAIGN: "There is no published campaign to open.",
+  FORBIDDEN: "That save belongs to another table.",
+  ALREADY_SEATED: "This account is already seated at the table.",
+  BAD_LOGIN: "That username or password is wrong.",
+  CAMPAIGN_NOT_FOUND: "That campaign is not published.",
   ROOM_NOT_FOUND: "That table doesn't exist anymore. Check the room code or start a new one.",
   ROOM_FULL: "This table already seats three heroes.",
   BAD_CHARACTER: "That hero isn't available. Pick another one.",
@@ -129,6 +152,19 @@ const ERROR_TEXT: Record<string, string> = {
   BAD_CANTRIP: "That cantrip isn't on your class list.",
   BAD_HP_ROLL: "Hit point rolls must fit your hit die.",
   CONNECTING: "Still reaching the table… one moment.",
+  NEED_VOLUNTEER: "Someone at the table must step up for this check.",
+  NOT_VOTABLE: "You can't vote on that beat.",
+  NO_VOTE: "There's no open vote at the table.",
+  PUZZLE_UNCLAIMED: "Claim the puzzle first — first hands on the mechanism.",
+  NOT_PUZZLE_HOLDER: "Only the player holding the puzzle can submit.",
+  PUZZLE_HELD: "Someone else already has their hands on the puzzle.",
+  HOLDER_USES_HANDS: "You're holding the puzzle — place symbols, don't soft-hint.",
+  BAD_SLOT: "That puzzle slot doesn't exist.",
+  BAD_OPTION: "That symbol isn't part of this puzzle.",
+  DRAFT_TOO_LONG: "Too many symbols in the draft.",
+  NOT_CHECK: "There's no skill check open.",
+  NO_VOLUNTEER_YET: "Wait for someone to volunteer before you Help.",
+  CANNOT_HELP_SELF: "You can't Help your own check.",
 };
 
 /** Player-facing sentence for a server error code. Never shows a raw code. */

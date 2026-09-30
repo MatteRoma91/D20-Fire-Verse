@@ -249,6 +249,10 @@ function keptFace(roll: DiceRoll): number {
 }
 
 function outcomeWord(roll: DiceRoll): string {
+  if (roll.purpose === "save") {
+    if (roll.outcome === "success") return "SAVED";
+    if (roll.outcome === "fail") return "FAILED";
+  }
   switch (roll.outcome) {
     case "crit":
       return "CRITICAL HIT";

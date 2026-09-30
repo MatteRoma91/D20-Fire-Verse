@@ -75,6 +75,23 @@ function brenna(x: number, y: number, over: Partial<CombatToken> = {}) {
   });
 }
 
+function quill(x: number, y: number, over: Partial<CombatToken> = {}) {
+  return token({
+    id: "pc-P1",
+    kind: "pc",
+    name: "Quill Ashmere",
+    x,
+    y,
+    ac: 12,
+    hp: 20,
+    maxHp: 20,
+    playerId: "P1",
+    characterId: "quill_ashmere",
+    actionIds: ["spell_burning_hands"],
+    ...over,
+  });
+}
+
 function rat(id: string, x: number, y: number, over: Partial<CombatToken> = {}) {
   return token({
     id,
@@ -209,6 +226,112 @@ test("a dropped hero dodges, so the next bite rolls with disadvantage", () => {
   assert.ok(strike && strike.kind === "strike");
   assert.equal(strike.rolls[0].values.length, 2);
   assert.match(strike.rolls[0].notation, /^2d20kl1/);
+});
+
+test("an attack under AC deals no damage, and a tie hits", () => {
+  const under = arena(3, 1, [brenna(0, 0), rat("en-1", 1, 0, { hp: 30, maxHp: 30, ac: 12 })]);
+  const miss = scriptDice([[20, 6]]);
+  try {
+    performPcAction(under, "P1", "longsword_attack", "en-1");
+  } finally {
+    miss();
+  }
+  const missed = under.events.at(-1);
+  assert.ok(missed?.kind === "strike");
+  assert.equal(missed.rolls[0].total, 11);
+  assert.equal(missed.hits[0].outcome, "miss");
+  assert.equal(missed.hits[0].damage, 0);
+  assert.equal(under.tokens[1].hp, 30);
+
+  const tied = arena(3, 1, [brenna(0, 0), rat("en-1", 1, 0, { hp: 30, maxHp: 30, ac: 12 })]);
+  const hit = scriptDice([
+    [20, 7],
+    [8, 4],
+  ]);
+  try {
+    performPcAction(tied, "P1", "longsword_attack", "en-1");
+  } finally {
+    hit();
+  }
+  const landed = tied.events.at(-1);
+  assert.ok(landed?.kind === "strike");
+  assert.equal(landed.rolls[0].total, 12);
+  assert.equal(landed.hits[0].outcome, "hit");
+  assert.equal(landed.hits[0].damage, 7);
+  assert.equal(tied.tokens[1].hp, 23);
+});
+
+test("burning hands is a 15-foot cone, not every nearby foe", () => {
+  const c = arena(6, 4, [
+    quill(0, 0),
+    rat("en-aim", 2, 0, { hp: 30, maxHp: 30 }),
+    rat("en-side", 2, 2, { hp: 30, maxHp: 30 }),
+    rat("en-fwd", 3, 1, { hp: 30, maxHp: 30 }),
+    rat("en-far", 4, 0, { hp: 30, maxHp: 30 }),
+  ]);
+  const restore = scriptDice([
+    [6, 3],
+    [6, 3],
+    [6, 3],
+    [20, 1],
+    [20, 1],
+  ]);
+  try {
+    performPcAction(c, "P1", "spell_burning_hands", "en-aim");
+  } finally {
+    restore();
+  }
+  const strike = c.events.at(-1);
+  assert.ok(strike?.kind === "strike");
+  const ids = strike.hits.map((h) => h.targetId).sort();
+  assert.deepEqual(ids, ["en-aim", "en-fwd"]);
+  assert.equal(c.tokens.find((t) => t.id === "en-side")!.hp, 30);
+  assert.equal(c.tokens.find((t) => t.id === "en-far")!.hp, 30);
+  for (const h of strike.hits) {
+    assert.equal(h.outcome, "fail");
+    assert.equal(h.damage, 9);
+    assert.notEqual(h.outcome, "miss");
+  }
+});
+
+test("a successful Dex save against burning hands takes half and is not a miss", () => {
+  const saved = arena(4, 1, [quill(0, 0), rat("en-1", 2, 0, { hp: 30, maxHp: 30 })]);
+  const save = scriptDice([
+    [6, 6],
+    [6, 6],
+    [6, 6],
+    [20, 11],
+  ]);
+  try {
+    performPcAction(saved, "P1", "spell_burning_hands", "en-1");
+  } finally {
+    save();
+  }
+  const half = saved.events.at(-1);
+  assert.ok(half?.kind === "strike");
+  assert.equal(half.hits.length, 1);
+  assert.equal(half.hits[0].outcome, "success");
+  assert.equal(half.hits[0].damage, 9);
+  assert.equal(saved.tokens[1].hp, 21);
+  assert.match(half.line, /half/);
+
+  const failed = arena(4, 1, [quill(0, 0), rat("en-1", 2, 0, { hp: 40, maxHp: 40 })]);
+  const fail = scriptDice([
+    [6, 6],
+    [6, 6],
+    [6, 6],
+    [20, 10],
+  ]);
+  try {
+    performPcAction(failed, "P1", "spell_burning_hands", "en-1");
+  } finally {
+    fail();
+  }
+  const full = failed.events.at(-1);
+  assert.ok(full?.kind === "strike");
+  assert.equal(full.hits[0].outcome, "fail");
+  assert.equal(full.hits[0].damage, 18);
+  assert.equal(failed.tokens[1].hp, 22);
 });
 
 test("a real encounter opens with initiative and hands the turn to a hero", () => {

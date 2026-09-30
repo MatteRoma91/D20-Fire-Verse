@@ -28,6 +28,7 @@
     "id": "hook_rumor",
     "type": "story",
     "alexaScene": "tavern",
+    "speaker": { "id": "messenger", "name": "A messenger" },
     "narration": {
       "text": "A messenger shrugs. Glowkindle pays well, but he says the rats down there watch you. I wouldn't go sober — and I've lived in Luppolandia forever."
     },
@@ -43,6 +44,7 @@
     "id": "glowkindle",
     "type": "story",
     "alexaScene": "tavern",
+    "speaker": { "id": "glowkindle", "name": "Glowkindle" },
     "narration": {
       "text": "The dirt road climbs past hedges and hay. Malt on the wind — and older stone. At the hilltop: grey stone, two barns, a creaking sign. A rock gnome in green braces shoves a mug into your hands. Drink. It's Tashalar Pale Ale — the last I've got. Then we talk. Make the beasts disappear. Find where they come from. Until something moves below, I don't reopen the vats. Seventy-five gold each. Beer for a month. Old gold you find is yours — I just want to sleep without squeaking."
     },
@@ -52,31 +54,183 @@
         "label": "Accept the vague mission (75 gp each)",
         "next": "descend",
         "flagsSet": [
-          "job_accepted"
+          "job_accepted",
+          "pay_75"
         ]
+      },
+      {
+        "id": "ask_more",
+        "label": "Ask for more than seventy-five gold",
+        "next": "glowkindle_persuade"
       },
       {
         "id": "ask_under",
         "label": "Ask what lies beneath",
-        "next": "glowkindle_ask"
+        "next": "glowkindle_insight"
       }
     ]
   },
-  "glowkindle_ask": {
-    "id": "glowkindle_ask",
+  "glowkindle_persuade": {
+    "id": "glowkindle_persuade",
+    "type": "skill_check",
+    "alexaScene": "tavern",
+    "speaker": { "id": "glowkindle", "name": "Glowkindle" },
+    "narration": {
+      "text": "Glowkindle squints over the mug. Seventy-five is fair. Beer for a month is not nothing. Who talks him up?"
+    },
+    "check": { "ability": "cha", "skill": "persuasion", "dc": 14 },
+    "onSuccess": {
+      "narration": {
+        "text": "Glowkindle groans, then laughs into his beard. Fine. One hundred gold each. Don't tell the village. Sleep without squeaking is worth it."
+      },
+      "next": "glowkindle_pay_100",
+      "flagsSet": ["pay_100"]
+    },
+    "onFailure": {
+      "narration": {
+        "text": "Glowkindle's smile thins. Seventy-five. I said seventy-five. The ale is the rest of the wage."
+      },
+      "next": "glowkindle_insist"
+    }
+  },
+  "glowkindle_pay_100": {
+    "id": "glowkindle_pay_100",
     "type": "story",
     "alexaScene": "tavern",
+    "speaker": { "id": "glowkindle", "name": "Glowkindle" },
     "narration": {
-      "text": "Glowkindle waves a hand. Stones. Old ones. I was making room for barrels. Then — them. I don't know if it's an ancient cellar or a well or a graveyard of rats. I don't go down anymore. Priority: sleep without squeaking."
+      "text": "One hundred gold each, when the squeaking stops. Beer for a month. He spits in his palm and offers it."
     },
     "choices": [
       {
         "id": "accept",
+        "label": "Shake on one hundred gold each",
+        "next": "descend",
+        "flagsSet": ["job_accepted", "pay_100"]
+      }
+    ]
+  },
+  "glowkindle_insist": {
+    "id": "glowkindle_insist",
+    "type": "story",
+    "alexaScene": "tavern",
+    "speaker": { "id": "glowkindle", "name": "Glowkindle" },
+    "narration": {
+      "text": "He plants the mug down. Take it, or don't. Who leans on him?"
+    },
+    "choices": [
+      {
+        "id": "intimidate",
+        "label": "Insist — harder",
+        "next": "glowkindle_intimidate"
+      },
+      {
+        "id": "drop",
+        "label": "Let it stand at seventy-five",
+        "next": "descend",
+        "flagsSet": ["job_accepted", "pay_75"]
+      }
+    ]
+  },
+  "glowkindle_intimidate": {
+    "id": "glowkindle_intimidate",
+    "type": "skill_check",
+    "alexaScene": "tavern",
+    "speaker": { "id": "glowkindle", "name": "Glowkindle" },
+    "narration": {
+      "text": "The gnome's eyes go small. You can shout. He has heard rats louder than you."
+    },
+    "check": { "ability": "cha", "skill": "intimidation", "dc": 14 },
+    "onSuccess": {
+      "narration": {
+        "text": "Glowkindle doesn't raise the purse — but he doesn't cut it either. Seventy-five gold each. Take it or leave it, and stop looming over the bar."
+      },
+      "next": "descend",
+      "flagsSet": ["job_accepted", "pay_75"]
+    },
+    "onFailure": {
+      "narration": {
+        "text": "Glowkindle's voice drops. Sixty. Take it or leave it. I don't pay threats, and I don't bargain twice."
+      },
+      "next": "glowkindle_pay_60",
+      "flagsSet": ["pay_60"]
+    }
+  },
+  "glowkindle_pay_60": {
+    "id": "glowkindle_pay_60",
+    "type": "story",
+    "alexaScene": "tavern",
+    "speaker": { "id": "glowkindle", "name": "Glowkindle" },
+    "narration": {
+      "text": "Sixty gold each. Beer if you're still standing. He will not look at the purse again."
+    },
+    "choices": [
+      {
+        "id": "accept",
+        "label": "Take sixty — or leave the hill",
+        "next": "descend",
+        "flagsSet": ["job_accepted", "pay_60"]
+      }
+    ]
+  },
+  "glowkindle_insight": {
+    "id": "glowkindle_insight",
+    "type": "skill_check",
+    "alexaScene": "tavern",
+    "speaker": { "id": "glowkindle", "name": "Glowkindle" },
+    "narration": {
+      "text": "You ask what lies beneath the brewery. Glowkindle studies the foam. Who reads him?"
+    },
+    "check": { "ability": "wis", "skill": "insight", "dc": 12 },
+    "onSuccess": {
+      "narration": {
+        "text": "He isn't lying — he's afraid. Stones older than the vats. A buried tower, he thinks, and a hole by the iron door that breathes warm. Things climb out. He stopped going down the night the squeaking learned his name."
+      },
+      "next": "glowkindle_after_insight",
+      "flagsSet": ["heard_depths"]
+    },
+    "onFailure": {
+      "narration": {
+        "text": "Glowkindle waves a hand. Stones. Old ones. I don't know if it's a cellar or a well or a graveyard of rats. I don't go down anymore. Priority: sleep without squeaking."
+      },
+      "next": "glowkindle_after_insight"
+    }
+  },
+  "glowkindle_after_insight": {
+    "id": "glowkindle_after_insight",
+    "type": "story",
+    "alexaScene": "tavern",
+    "speaker": { "id": "glowkindle", "name": "Glowkindle" },
+    "narration": {
+      "text": "The mug is still in your hand. The trapdoor is still under the rug. Seventy-five gold each, unless you already talked him somewhere else."
+    },
+    "choices": [
+      {
+        "id": "accept75",
         "label": "Take the job — open the trapdoor",
         "next": "descend",
-        "flagsSet": [
-          "job_accepted"
-        ]
+        "flagsSet": ["job_accepted", "pay_75"],
+        "excludeFlags": ["pay_100", "pay_60"]
+      },
+      {
+        "id": "accept100",
+        "label": "Open the trapdoor — one hundred gold stands",
+        "next": "descend",
+        "flagsSet": ["job_accepted"],
+        "requireFlags": ["pay_100"]
+      },
+      {
+        "id": "accept60",
+        "label": "Open the trapdoor — sixty gold stands",
+        "next": "descend",
+        "flagsSet": ["job_accepted"],
+        "requireFlags": ["pay_60"]
+      },
+      {
+        "id": "ask_more",
+        "label": "Ask for more than seventy-five gold",
+        "next": "glowkindle_persuade",
+        "excludeFlags": ["pay_100", "pay_60"]
       }
     ]
   },
@@ -84,6 +238,7 @@
     "id": "descend",
     "type": "story",
     "alexaScene": "explore",
+    "speaker": { "id": "glowkindle", "name": "Glowkindle" },
     "narration": {
       "text": "Behind the bar, Glowkindle lifts a jute rug and a hidden trapdoor. Stone stairs sink into a buried wizard's tower. Dust. Cold. He stays above. If you hear something… don't call me. Or do. I don't know. Go."
     },
@@ -100,12 +255,12 @@
     "type": "story",
     "alexaScene": "explore",
     "narration": {
-      "text": "A dusty stone corridor opens beyond the stairs. Footsteps echo a breath too late. A mosaic of colored tiles covers the runner like a cursed chessboard. Side doors lead into dark. At the far end: a heavy iron door with three empty sockets. Beside the jamb, a hole in the floor breathes warm air — something has been climbing out to hunt."
+      "text": "A dusty stone corridor opens beyond the stairs. Footsteps echo a breath too late. Side doors lead into dark. At the far end: a heavy iron door with three empty sockets. Beside the jamb, a hole in the floor breathes warm air — something has been climbing out to hunt. The walls are cut with thin slits."
     },
     "choices": [
       {
         "id": "hub",
-        "label": "Take in the mosaic hub",
+        "label": "Look down the corridor",
         "next": "corridor_hub"
       }
     ]
@@ -176,20 +331,19 @@
     },
     "onFailure": {
       "narration": {
-        "text": "A second fault wakes the corridor blades — they scythe the air (Dexterity save DC 14, 2d10 slashing, half on success). The mosaic still yields if you force the correct colors afterward."
+        "text": "A second fault wakes the wall slits. Arrows hiss out of the stone. The mosaic still waits for the poem's true colors."
       },
-      "next": "corridor_tiles_force",
       "effects": [
         {
           "type": "saving_throw",
           "ability": "dex",
-          "dc": 14,
+          "dc": 12,
           "damage": {
-            "dice": "2d10",
-            "type": "slashing",
-            "halfOnSuccess": true
+            "dice": "1d4",
+            "type": "piercing"
           },
-          "targets": "all_pcs"
+          "targets": "all_pcs",
+          "halfOnSuccess": false
         }
       ]
     }
@@ -297,12 +451,8 @@
     },
     "onFailure": {
       "narration": {
-        "text": "Wrong order. Heat blooms from the sockets — fire washes the hall (Dexterity save DC 13, 2d8 fire). You jam a crowbar and force the slab free: Seal of the Cellar, scorched but yours."
+        "text": "Wrong order. Heat blooms from the sockets — fire washes the hall. The niches cool. Try the vessels again."
       },
-      "next": "corridor_hub",
-      "flagsSet": [
-        "seal_cellar"
-      ],
       "effects": [
         {
           "type": "saving_throw",
@@ -477,9 +627,8 @@
     },
     "onFailure": {
       "narration": {
-        "text": "Acid fumes lash the store (Dexterity save DC 13, 2d8 acid). Coughing, you still force the correct arrangement and reach the basins."
+        "text": "Acid fumes lash the store. The vials wait, still unlabeled. Deduce again — do not taste."
       },
-      "next": "store_mixture",
       "effects": [
         {
           "type": "saving_throw",
@@ -551,12 +700,8 @@
     },
     "onFailure": {
       "narration": {
-        "text": "Wrong reagents flash — a catalyst bloom of fire and acid. You smother it and scrape the Seal of the Residue free."
+        "text": "Wrong reagents flash — a catalyst bloom of fire and acid. The basins empty. The rite waits for the true three gestures."
       },
-      "next": "corridor_hub",
-      "flagsSet": [
-        "seal_store"
-      ],
       "effects": [
         {
           "type": "saving_throw",
@@ -735,19 +880,62 @@
     "encounterId": "corridor_magma_rat",
     "onVictory": "epilogue"
   },
+  "corridor_scan": {
+    "id": "corridor_scan",
+    "type": "skill_check",
+    "alexaScene": "explore",
+    "narration": {
+      "text": "The corridor holds its breath. Thin slits line the walls. Somewhere in the dust, color might be hiding. Who looks?"
+    },
+    "check": { "ability": "wis", "skill": "perception", "dc": 12 },
+    "onSuccess": {
+      "narration": {
+        "text": "A niche in the runner catches the light: a mosaic of colored tiles, and a poem scratched beside it. The chessboard was waiting to be seen."
+      },
+      "next": "corridor_hub",
+      "flagsSet": ["mosaic_spotted"]
+    },
+    "onFailure": {
+      "narration": {
+        "text": "Stone, dust, and the warm breath of the hole. If a pattern is here, it stays in the dark."
+      },
+      "next": "corridor_hub"
+    }
+  },
   "epilogue": {
     "id": "epilogue",
     "type": "story",
     "alexaScene": "tavern",
+    "speaker": { "id": "glowkindle", "name": "Glowkindle" },
     "narration": {
       "text": "Glowkindle meets you with shaking hands and full mugs. The squeaking is gone. Seventy-five gold each, beer for a month — and the last of the Tashalar Pale Ale tastes like victory with a metallic aftertaste only Luppolandia knows."
     },
     "choices": [
-      {
-        "id": "done",
-        "label": "End adventure",
-        "next": "END_WIN"
-      }
+      { "id": "done", "label": "End adventure", "next": "END_WIN" }
+    ]
+  },
+  "epilogue_100": {
+    "id": "epilogue_100",
+    "type": "story",
+    "alexaScene": "tavern",
+    "speaker": { "id": "glowkindle", "name": "Glowkindle" },
+    "narration": {
+      "text": "Glowkindle meets you with shaking hands and a heavier purse than he promised the first time. One hundred gold each. Beer for a month. The last of the Tashalar Pale Ale tastes like victory — and like a gnome who knows he was talked into it."
+    },
+    "choices": [
+      { "id": "done", "label": "End adventure", "next": "END_WIN" }
+    ]
+  },
+  "epilogue_60": {
+    "id": "epilogue_60",
+    "type": "story",
+    "alexaScene": "tavern",
+    "speaker": { "id": "glowkindle", "name": "Glowkindle" },
+    "narration": {
+      "text": "Glowkindle counts sixty gold into each palm and does not apologize. Take it or leave it still stands. The squeaking is gone. The ale tastes like victory with a thinner purse."
+    },
+    "choices": [
+      { "id": "done", "label": "End adventure", "next": "END_WIN" }
     ]
   }
 }

@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>FireVerse — Admin</title>
+    <style>
+      :root { color-scheme: dark; }
+      body { margin: 0; font: 16px/1.45 Georgia, serif; background: #140e0b; color: #f3e6d4; }
+      header, main { max-width: 960px; margin: 0 auto; padding: 1.2rem; }
+      h1 { font-size: 1.6rem; margin: 0 0 0.4rem; }
+      nav { display: flex; gap: 0.5rem; flex-wrap: wrap; margin: 1rem 0; }
+      button, input, select, textarea { font: inherit; }
+      button { background: #c45c26; color: #1a100c; border: 0; border-radius: 8px; padding: 0.45rem 0.8rem; cursor: pointer; }
+      button.ghost { background: transparent; color: #f3e6d4; border: 1px solid #5c4638; }
+      input, select, textarea { width: 100%; box-sizing: border-box; background: #221812; color: inherit; border: 1px solid #5c4638; border-radius: 8px; padding: 0.45rem 0.6rem; }
+      textarea { min-height: 6rem; }
+      table { width: 100%; border-collapse: collapse; }
+      td, th { text-align: left; padding: 0.35rem 0.4rem; border-bottom: 1px solid #3a2c24; vertical-align: top; }
+      .card { background: #1c1410; border: 1px solid #3a2c24; border-radius: 12px; padding: 1rem; margin: 0.8rem 0; }
+      .row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+      .err { color: #ffb4a2; }
+      label { display: block; margin: 0.45rem 0; }
+      label span { display: block; font-size: 0.85rem; opacity: 0.75; }
+      #login { max-width: 360px; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Tavolo — admin</h1>
+      <p id="who"></p>
+    </header>
+    <main>
+      <form id="login" class="card">
+        <label><span>Username</span><input id="user" autocomplete="username" value="admin" /></label>
+        <label><span>Password</span><input id="pass" type="password" autocomplete="current-password" value="admin" /></label>
+        <button type="submit">Entra</button>
+        <p class="err" id="loginErr"></p>
+      </form>
+      <section id="app" hidden>
+        <nav>
+          <button type="button" data-tab="users">Utenti</button>
+          <button type="button" class="ghost" data-tab="rooms">Stanze</button>
+          <button type="button" class="ghost" data-tab="saves">Salvataggi</button>
+          <button type="button" class="ghost" data-tab="camps">Campagne</button>
+          <button type="button" class="ghost" id="logout">Esci</button>
+        </nav>
+        <div id="users"></div>
+        <div id="rooms" hidden></div>
+        <div id="saves" hidden></div>
+        <div id="camps" hidden></div>
+      </section>
+    </main>
+    <script>
+      const $ = (id) => document.getElementById(id);
+      const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+      async function api(path, opts = {}) {
+        const res = await fetch(path, {
+          credentials: "same-origin",
+          headers: opts.body && !(opts.body instanceof ArrayBuffer) && !(opts.body instanceof Uint8Array) ? { "Content-Type": "application/json" } : {},
+          ...opts,
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || res.statusText);
+        return data;
+      }
+      let tab = "users";
+      function show(name) {
+        tab = name;
+        for (const id of ["users", "rooms", "saves", "camps"]) $(id).hidden = id !== name;
+      }
+      document.querySelectorAll("[data-tab]").forEach((b) => b.addEventListener("click", () => { show(b.dataset.tab); refresh(); }));
+      $("logout").addEventListener("click", async () => { await api("/api/logout", { method: "POST" }); location.reload(); });
+      $("login").addEventListener("submit", async (ev) => {
+        ev.preventDefault();
+        $("loginErr").textContent = "";
+        try {
+          await api("/api/login", { method: "POST", body: JSON.stringify({ username: $("user").value, password: $("pass").value }) });
+          await boot();
+        } catch (err) { $("loginErr").textContent = "Accesso rifiutato."; }
+      });
+
+      async function boot() {
+        const me = await api("/api/me");
+        if (me.user.role !== "admin") { $("loginErr").textContent = "Questo account non è admin."; return; }
+        $("login").hidden = true;
+        $("app").hidden = false;
+        $("who").textContent = me.user.username;
+        await refresh();
+      }
+      async function refresh() {
+        if (tab === "users") await renderUsers();
+        if (tab === "rooms") await renderRooms();
+        if (tab === "saves") await renderSaves();
+        if (tab === "camps") await renderCamps();
+      }
+      async function renderUsers() {
+        const { users } = await api("/api/admin/users");
+        $("users").innerHTML = `<div class="card"><h2>Nuovo utente</h2>
+          <div class="row"><label><span>Username</span><input id="nu" /></label><label><span>Password</span><input id="np" /></label></div>
+          <label><span>Ruolo</span><select id="nr"><option value="player">player</option><option value="admin">admin</option></select></label>
+          <button type="button" id="nub">Crea</button></div>
+          <table><tr><th>Nome</th><th>Ruolo</th><th>Stato</th><th></th></tr>
+          ${users.map((u) => `<tr><td>${esc(u.username)}</td><td>${esc(u.role)}</td><td>${u.disabled ? "disattivo" : "attivo"}</td>
+            <td><button type="button" class="ghost" data-reset="${esc(u.id)}">Nuova password</button>
+            <button type="button" class="ghost" data-role="${esc(u.id)}" data-next="${u.role === "admin" ? "player" : "admin"}">${u.role === "admin" ? "Rendi player" : "Rendi admin"}</button>
+            <button type="button" class="ghost" data-dis="${esc(u.id)}" data-off="${u.disabled ? "0" : "1"}">${u.disabled ? "Riattiva" : "Disattiva"}</button></td></tr>`).join("")}
+          </table>`;
+        $("nub").onclick = async () => {
+          await api("/api/admin/users", { method: "POST", body: JSON.stringify({ username: $("nu").value, password: $("np").value, role: $("nr").value }) });
+          renderUsers();
+        };
+        $("users").querySelectorAll("[data-reset]").forEach((b) => b.onclick = async () => {
+          const password = prompt("Nuova password");
+          if (!password) return;
+          await api("/api/admin/users/" + b.dataset.reset, { method: "POST", body: JSON.stringify({ password }) });
+          renderUsers();
+        });
+        $("users").querySelectorAll("[data-role]").forEach((b) => b.onclick = async () => {
+          await api("/api/admin/users/" + b.dataset.role, { method: "POST", body: JSON.stringify({ role: b.dataset.next }) });
+          renderUsers();
+        });
+        $("users").querySelectorAll("[data-dis]").forEach((b) => b.onclick = async () => {
+          await api("/api/admin/users/" + b.dataset.dis, { method: "POST", body: JSON.stringify({ disabled: b.dataset.off === "1" }) });
+          renderUsers();
+        });
+      }
+      async function renderRooms() {
+        const { rooms } = await api("/api/admin/rooms");
+        $("rooms").innerHTML = `<table><tr><th>Codice</th><th>Campagna</th><th>Nodo</th><th>Giocatori</th><th></th></tr>
+          ${rooms.map((r) => `<tr><td>${esc(r.roomCode)}</td><td>${esc(r.campaignId)} v${esc(r.campaignVersion)}</td><td>${esc(r.nodeId)}</td><td>${esc(r.players.map((p) => p.name).join(", "))}</td>
+            <td><button type="button" class="ghost" data-close="${esc(r.roomCode)}">Chiudi</button></td></tr>`).join("") || "<tr><td>Nessuna stanza aperta</td></tr>"}</table>`;
+        $("rooms").querySelectorAll("[data-close]").forEach((b) => b.onclick = async () => {
+          await api("/api/admin/rooms/" + b.dataset.close + "/close", { method: "POST" });
+          renderRooms();
+        });
+      }
+      async function renderSaves() {
+        const { saves } = await api("/api/admin/saves");
+        $("saves").innerHTML = `<table><tr><th>Id</th><th>Campagna</th><th>Nodo</th><th>Eroi</th><th>Quando</th></tr>
+          ${saves.map((s) => `<tr><td>${esc(s.saveId)}</td><td>${esc(s.campaignId)}</td><td>${esc(s.nodeId)}</td><td>${esc(s.players.join(", "))}</td><td>${esc(s.updatedAt)}</td></tr>`).join("") || "<tr><td>Nessun salvataggio</td></tr>"}</table>`;
+      }
+      async function renderCamps() {
+        const { campaigns } = await api("/api/admin/campaigns");
+        $("camps").innerHTML = `<div class="card"><h2>Importa zip</h2>
+          <input id="zip" type="file" accept=".zip,application/zip" />
+          <button type="button" id="doZip">Carica bozza</button>
+          <p>Lo zip non va in gioco finché non pubblichi. Le stanze già aperte tengono la versione con cui sono partite.</p></div>
+          <table><tr><th>Id</th><th>Titolo</th><th>Pubblicata</th><th></th></tr>
+          ${campaigns.map((c) => `<tr><td>${esc(c.id)}</td><td>${esc(c.title)}</td><td>${c.publishedVersion ?? "—"}</td>
+            <td><button type="button" data-edit="${esc(c.id)}">Editor</button>
+            <button type="button" class="ghost" data-pub="${esc(c.id)}">Pubblica</button>
+            <button type="button" class="ghost" data-un="${esc(c.id)}">Ritira</button></td></tr>`).join("")}</table>
+          <div id="editor"></div>`;
+        $("doZip").onclick = async () => {
+          const file = $("zip").files[0];
+          if (!file) return;
+          const buf = await file.arrayBuffer();
+          await api("/api/admin/campaigns/import", { method: "POST", body: buf, headers: { "Content-Type": "application/zip" } });
+          renderCamps();
+        };
+        $("camps").querySelectorAll("[data-pub]").forEach((b) => b.onclick = async () => { await api("/api/admin/campaigns/" + b.dataset.pub + "/publish", { method: "POST" }); renderCamps(); });
+        $("camps").querySelectorAll("[data-un]").forEach((b) => b.onclick = async () => { await api("/api/admin/campaigns/" + b.dataset.un + "/unpublish", { method: "POST" }); renderCamps(); });
+        $("camps").querySelectorAll("[data-edit]").forEach((b) => b.onclick = () => openEditor(b.dataset.edit));
+      }
+      function field(label, html) { return `<label><span>${label}</span>${html}</label>`; }
+      function choiceRows(choices) {
+        return (choices || []).map((c, i) => `<div class="card" data-choice="${i}">
+          ${field("Etichetta", `<input data-k="label" value="${esc(c.label)}" />`)}
+          ${field("Nodo successivo", `<input data-k="next" value="${esc(c.next)}" />`)}
+          ${field("Flag impostate (virgole)", `<input data-k="flagsSet" value="${esc((c.flagsSet || []).join(", "))}" />`)}
+        </div>`).join("");
+      }
+      async function openEditor(id) {
+        const pack = await api("/api/admin/campaigns/" + id);
+        const host = $("editor");
+        host.innerHTML = `<div class="card"><h2>${esc(pack.manifest.title)}</h2>
+          <p>Hub di corridoio, frecce e paga di Glowkindle restano regole del server: qui cambi testi e collegamenti.</p>
+          <label><span>Nodo</span><select id="nodePick">${pack.nodes.map((n) => `<option value="${esc(n.id)}">${esc(n.id)} · ${esc(n.type)}</option>`).join("")}</select></label>
+          <div id="nodeForm"></div></div>`;
+        const load = async () => {
+          const nodeId = $("nodePick").value;
+          const { node, encounter } = await api(`/api/admin/campaigns/${id}/nodes/${nodeId}`);
+          const form = $("nodeForm");
+          const narr = node.narration?.text || "";
+          let extra = "";
+          if (node.type === "skill_check") {
+            extra = field("Caratteristica", `<input id="ab" value="${esc(node.check?.ability || "wis")}" />`)
+              + field("Abilità", `<input id="sk" value="${esc(node.check?.skill || "")}" />`)
+              + field("DC", `<input id="dc" value="${esc(node.check?.dc || 10)}" />`)
+              + field("Testo riuscita", `<textarea id="okText">${esc(node.onSuccess?.narration?.text || "")}</textarea>`)
+              + field("Nodo riuscita", `<input id="okNext" value="${esc(node.onSuccess?.next || "")}" />`)
+              + field("Testo fallimento", `<textarea id="badText">${esc(node.onFailure?.narration?.text || "")}</textarea>`)
+              + field("Nodo fallimento", `<input id="badNext" value="${esc(node.onFailure?.next || "")}" />`);
+          } else if (node.type === "puzzle") {
+            extra = field("Opzioni (id|etichetta, una per riga)", `<textarea id="opts">${esc((node.puzzle?.options || []).map((o) => o.id + "|" + o.label).join("\n"))}</textarea>`)
+              + field("Soluzione (id separati da virgola)", `<input id="sol" value="${esc((node.puzzle?.solution || []).join(", "))}" />`)
+              + field("Hint", `<textarea id="hint">${esc(node.puzzle?.hint || "")}</textarea>`)
+              + field("Nudge", `<textarea id="nudge">${esc(node.puzzle?.nudge || "")}</textarea>`)
+              + field("Fallimenti prima della penalità", `<input id="fails" value="${esc(node.puzzle?.maxFailsBeforePenalty ?? "")}" />`);
+          } else if (node.type === "encounter") {
+            const groups = encounter?.scaling?.["1"] || [];
+            extra = field("Incontro", `<input id="enc" value="${esc(node.encounterId || "")}" />`)
+              + field("Dopo la vittoria", `<input id="win" value="${esc(node.onVictory || "")}" />`)
+              + field("Testo di apertura", `<textarea id="intro">${esc(encounter?.intro || "")}</textarea>`)
+              + field("Mappa", `<input id="map" value="${esc(encounter?.mapId || "")}" />`)
+              + field("Nemici (id e numero, una riga)", `<textarea id="mons">${esc(groups.map((g) => g.monsterId + " " + g.count).join("\n"))}</textarea>`);
+          }
+          form.innerHTML = field("Testo", `<textarea id="narr">${esc(narr)}</textarea>`)
+            + field("Speaker id", `<input id="spId" value="${esc(node.speaker?.id || "")}" />`)
+            + field("Speaker nome", `<input id="spName" value="${esc(node.speaker?.name || "")}" />`)
+            + `<h3>Scelte</h3><div id="choices">${choiceRows(node.choices)}</div><button type="button" class="ghost" id="addCh">Aggiungi scelta</button>`
+            + extra
+            + `<p><button type="button" id="saveNode">Salva bozza</button></p><p class="err" id="saveErr"></p>`;
+          $("addCh").onclick = () => { $("choices").insertAdjacentHTML("beforeend", choiceRows([{ label: "", next: "", flagsSet: [] }])); };
+          $("saveNode").onclick = async () => {
+            $("saveErr").textContent = "";
+            const next = structuredClone(node);
+            next.narration = { text: $("narr").value };
+            const spId = $("spId").value.trim();
+            next.speaker = spId ? { id: spId, name: $("spName").value.trim() || spId } : undefined;
+            next.choices = [...$("choices").querySelectorAll("[data-choice]")].map((box) => ({
+              id: (node.choices || [])[Number(box.dataset.choice)]?.id || ("choice_" + Math.random().toString(36).slice(2, 7)),
+              label: box.querySelector("[data-k=label]").value,
+              next: box.querySelector("[data-k=next]").value,
+              flagsSet: box.querySelector("[data-k=flagsSet]").value.split(",").map((s) => s.trim()).filter(Boolean),
+            })).filter((c) => c.label && c.next);
+            let encounterBody = null;
+            if (next.type === "skill_check") {
+              next.check = { ability: $("ab").value.trim(), skill: $("sk").value.trim() || undefined, dc: Number($("dc").value) };
+              next.onSuccess = { narration: { text: $("okText").value }, next: $("okNext").value.trim() };
+              next.onFailure = { narration: { text: $("badText").value }, next: $("badNext").value.trim() };
+            } else if (next.type === "puzzle") {
+              const options = $("opts").value.split(/\n/).map((line) => line.trim()).filter(Boolean).map((line) => {
+                const [oid, ...rest] = line.split("|");
+                return { id: oid.trim(), label: rest.join("|").trim() || oid.trim() };
+              });
+              next.puzzle = { ...(next.puzzle || { kind: "sequence" }), kind: "sequence", options, solution: $("sol").value.split(",").map((s) => s.trim()).filter(Boolean), hint: $("hint").value, nudge: $("nudge").value };
+              const fails = $("fails").value.trim();
+              if (fails) next.puzzle.maxFailsBeforePenalty = Number(fails);
+            } else if (next.type === "encounter") {
+              next.encounterId = $("enc").value.trim();
+              next.onVictory = $("win").value.trim();
+              const monsters = $("mons").value.split(/\n/).map((line) => line.trim()).filter(Boolean).map((line) => {
+                const [monsterId, count] = line.split(/\s+/);
+                return { monsterId, count: Number(count || 1) };
+              });
+              const scaling = { ...(encounter?.scaling || {}) };
+              scaling["1"] = monsters;
+              if (!scaling["2"]) scaling["2"] = monsters;
+              if (!scaling["3"]) scaling["3"] = monsters;
+              encounterBody = { ...(encounter || { id: next.encounterId, name: next.encounterId, mapId: $("map").value.trim(), scaling: {} }), id: next.encounterId, mapId: $("map").value.trim(), intro: $("intro").value, scaling };
+            }
+            try {
+              await api(`/api/admin/campaigns/${id}/nodes/${nodeId}`, { method: "PUT", body: JSON.stringify({ node: next, encounter: encounterBody }) });
+              $("saveErr").textContent = "Bozza salvata. Pubblica per le stanze nuove.";
+            } catch (err) { $("saveErr").textContent = err.message; }
+          };
+        };
+        $("nodePick").addEventListener("change", load);
+        await load();
+      }
+      api("/api/me").then((me) => { if (me.user?.role === "admin") { $("login").hidden = true; $("app").hidden = false; $("who").textContent = me.user.username; refresh(); } }).catch(() => {});
+    </script>
+  </body>
+</html>

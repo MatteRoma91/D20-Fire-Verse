@@ -39,16 +39,38 @@ type Pregen = { id: string; name: string; summary: string; class: string; race?:
 type Seat = { playerId: string; characterId: string; characterName: string; portrait: string };
 type Token = { id: string; playerId?: string; name: string; hp: number; maxHp: number; ac: number; dead: boolean; kind: string };
 type MenuAction = { id: string; name: string; available: boolean };
+type PuzzleState = {
+  kind: string;
+  picked: string[];
+  need: number;
+  fails: number;
+  feedback: string;
+  draft?: string[];
+  holderId?: string | null;
+  holderName?: string | null;
+  hints?: Array<{ playerId: string; name: string; slot: number; optionId: string }>;
+} | null;
 type TableState = {
   roomCode: string;
   nodeId: string;
   nodeType: string;
   alexaScene?: string;
   narration?: string;
+  speaker?: { id: string; name: string; portrait: string } | null;
   players: Seat[];
   choices: Array<{ id: string; label: string }>;
   skillCheck?: { ability: string; skill?: string; dc: number };
-  puzzle: unknown | null;
+  vote?: {
+    nodeId: string;
+    votes: Array<{ playerId: string; choiceId: string; name: string; portrait: string | null }>;
+    remainingMs: number;
+  } | null;
+  checkOffer?: {
+    roster: Array<{ playerId: string; name: string; bonus: number }>;
+    volunteers: string[];
+    helpers: string[];
+  } | null;
+  puzzle: PuzzleState;
   combat: {
     status: string;
     round: number;
@@ -99,7 +121,19 @@ app.innerHTML = `
     <span class="conn" id="conn">Connecting…</span>
   </header>
 
-  <section class="panel" id="joinPanel">
+  <section class="panel login-gate" id="loginGate">
+    <h2>Sign in</h2>
+    <form id="loginForm">
+      <label for="loginUser">Username</label>
+      <input id="loginUser" autocomplete="username" />
+      <label for="loginPass">Password</label>
+      <input id="loginPass" type="password" autocomplete="current-password" />
+      <button type="submit" class="primary">Enter</button>
+      <p class="meta err" id="loginError"></p>
+    </form>
+  </section>
+
+  <section class="panel" id="joinPanel" hidden>
     <form class="code-row" id="codeForm">
       <label for="roomCode">Table code</label>
       <input id="roomCode" maxlength="6" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="ABC123" inputmode="text" />
@@ -163,9 +197,12 @@ function me(): Seat | undefined {
   return state?.players.find((p) => p.playerId === playerId);
 }
 
+let signedIn = false;
+
 function render() {
   const seated = !!state && !!me();
-  $("joinPanel").hidden = seated;
+  $("loginGate").hidden = signedIn;
+  $("joinPanel").hidden = !signedIn || seated;
   $("seatPanel").hidden = !seated;
   $("micPanel").hidden = !seated;
   $("mastTitle").textContent = seated ? me()!.characterName : state ? `Table ${state.roomCode}` : "Take a seat";
@@ -236,13 +273,46 @@ function renderSeat() {
     turn.hidden = true;
     if (s.skillCheck && s.nodeType === "skill_check") {
       const skill = (s.skillCheck.skill ?? s.skillCheck.ability).replace(/_/g, " ");
-      controls.innerHTML = `<button type="button" class="primary big" data-choice="attempt">Roll ${esc(skill)} · DC ${s.skillCheck.dc}</button>`;
+      const roster = s.checkOffer?.roster ?? [];
+      const helpers = new Set(s.checkOffer?.helpers ?? []);
+      controls.innerHTML = `
+        <p class="meta">Who attempts ${esc(skill)} · DC ${s.skillCheck.dc}? Pledge Help before they step up for advantage.</p>
+        ${roster
+          .map((r) => {
+            const mine = r.playerId === seat.playerId;
+            return `<button type="button" class="${mine ? "primary" : ""}" data-volunteer="${esc(r.playerId)}" ${mine ? "" : "disabled"}>${esc(r.name)} · ${r.bonus >= 0 ? "+" : ""}${r.bonus}${helpers.has(r.playerId) ? " · helping" : ""}</button>`;
+          })
+          .join("")}
+        ${
+          roster.some((r) => r.playerId !== seat.playerId)
+            ? `<button type="button" data-help="1">Pledge Help (advantage)</button>`
+            : ""
+        }`;
     } else if (s.puzzle) {
-      controls.innerHTML = `<p class="meta">A puzzle is on the television. Work it out together, then use the remote.</p>`;
+      const holder = s.puzzle.holderId;
+      const multi = s.players.length > 1;
+      if (multi && !holder) {
+        controls.innerHTML = `<button type="button" class="primary big" data-claim="1">Take the mechanism</button>
+          <p class="meta">First hands place the symbols. Others can soft-suggest on the TV.</p>`;
+      } else if (multi && holder === seat.playerId) {
+        controls.innerHTML = `<p class="meta">You hold the mechanism — place symbols on the television.</p>
+          <button type="button" data-release="1">Pass the mechanism</button>`;
+      } else if (multi) {
+        controls.innerHTML = `<p class="meta">${esc(s.puzzle.holderName ?? "An ally")} holds the mechanism. Soft-suggest from the TV, or wait your turn.</p>`;
+      } else {
+        controls.innerHTML = `<p class="meta">A puzzle is on the television. Work it with the remote.</p>`;
+      }
     } else {
-      controls.innerHTML = s.choices
-        .map((c, i) => `<button type="button" class="${i === 0 ? "primary" : ""}" data-choice="${esc(c.id)}"><b>${i + 1}</b>${esc(c.label)}</button>`)
-        .join("");
+      const voting = !!(s.vote && s.players.length > 1);
+      const sec = voting ? Math.ceil(s.vote!.remainingMs / 1000) : 0;
+      controls.innerHTML =
+        (voting ? `<p class="meta">Party vote · ${sec}s left</p>` : "") +
+        s.choices
+          .map((c, i) => {
+            const mine = s.vote?.votes.find((v) => v.playerId === seat.playerId)?.choiceId === c.id;
+            return `<button type="button" class="${i === 0 ? "primary" : ""} ${mine ? "voted" : ""}" data-choice="${esc(c.id)}"><b>${i + 1}</b>${esc(c.label)}${mine ? " · your vote" : ""}</button>`;
+          })
+          .join("");
     }
   }
   controls.querySelectorAll<HTMLElement>("[data-intent]").forEach((b) =>
@@ -254,10 +324,47 @@ function renderSeat() {
   controls.querySelectorAll<HTMLElement>("[data-choice]").forEach((b) =>
     b.addEventListener("click", () => {
       if (navigator.vibrate) navigator.vibrate(12);
-      send({ action: "CHOOSE", roomCode: s.roomCode, choiceId: b.dataset.choice });
+      if (s.players.length > 1) {
+        send({ action: "CAST_VOTE", roomCode: s.roomCode, playerId, choiceId: b.dataset.choice });
+      } else {
+        send({ action: "CHOOSE", roomCode: s.roomCode, playerId, choiceId: b.dataset.choice });
+      }
     }),
   );
-  $("narr").textContent = (s.narration ?? "").split(/\n{2,}/)[0]!.slice(0, 320);
+  controls.querySelectorAll<HTMLElement>("[data-volunteer]").forEach((b) =>
+    b.addEventListener("click", () => {
+      if (b.hasAttribute("disabled") || b.dataset.volunteer !== seat.playerId) return;
+      if (navigator.vibrate) navigator.vibrate(12);
+      send({ action: "VOLUNTEER_CHECK", roomCode: s.roomCode, playerId: seat.playerId });
+    }),
+  );
+  controls.querySelectorAll<HTMLElement>("[data-help]").forEach((b) =>
+    b.addEventListener("click", () => {
+      if (navigator.vibrate) navigator.vibrate(12);
+      send({ action: "VOLUNTEER_CHECK", roomCode: s.roomCode, playerId, help: true });
+    }),
+  );
+  controls.querySelectorAll<HTMLElement>("[data-claim]").forEach((b) =>
+    b.addEventListener("click", () => {
+      if (navigator.vibrate) navigator.vibrate(12);
+      send({ action: "CLAIM_PUZZLE", roomCode: s.roomCode, playerId });
+    }),
+  );
+  controls.querySelectorAll<HTMLElement>("[data-release]").forEach((b) =>
+    b.addEventListener("click", () => {
+      if (navigator.vibrate) navigator.vibrate(12);
+      send({ action: "RELEASE_PUZZLE", roomCode: s.roomCode, playerId });
+    }),
+  );
+  const speaker = s.speaker;
+  const narrLead = (s.narration ?? "").split(/\n{2,}/)[0]!.slice(0, 320);
+  const narr = $("narr");
+  if (speaker?.portrait) {
+    narr.innerHTML = `<span class="speaker-inline"><img src="${esc(speaker.portrait)}" alt="" /><strong>${esc(speaker.name)}</strong></span>`;
+    narr.append(document.createTextNode(narrLead));
+  } else {
+    narr.textContent = narrLead;
+  }
 }
 
 function connect() {
@@ -402,5 +509,37 @@ document.addEventListener("visibilitychange", () => {
   if (!document.hidden && ws?.readyState === WebSocket.OPEN) attach();
 });
 
+async function ensureLogin(): Promise<void> {
+  const me = await fetch("/api/me", { credentials: "same-origin" });
+  if (me.ok) {
+    signedIn = true;
+    return;
+  }
+  await new Promise<void>((resolve) => {
+    $("loginForm").addEventListener("submit", async (ev) => {
+      ev.preventDefault();
+      $("loginError").textContent = "";
+      const res = await fetch("/api/login", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: ($("loginUser") as HTMLInputElement).value,
+          password: ($("loginPass") as HTMLInputElement).value,
+        }),
+      });
+      if (!res.ok) {
+        $("loginError").textContent = "That username or password is wrong.";
+        return;
+      }
+      signedIn = true;
+      resolve();
+    });
+  });
+}
+
 render();
-connect();
+void ensureLogin().then(() => {
+  render();
+  connect();
+});

@@ -3,4 +3,5 @@ export type Player = {
   displayName: string;
   characterId: string;
   characterName: string;
+  userId?: string;
 };

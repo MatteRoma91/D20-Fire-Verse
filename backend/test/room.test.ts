@@ -30,7 +30,19 @@ function pick(room: Room, label: string): Room {
 function toCellarFight(): { room: Room; playerId: string } {
   const created = createRoom();
   const { room, playerId } = joinRoom(created.roomCode, "Tester", "brenna_ironveal");
-  for (const label of ["gold", "vague", "Descend", "hub", "Cellar", "steel"]) pick(room, label);
+  const labels = ["gold", "vague", "Descend", "Look down", "Cellar", "steel"];
+  let i = 0;
+  while (i < labels.length) {
+    if (publicState(room).nodeType === "skill_check") {
+      choose(room.roomCode, "attempt", playerId);
+      continue;
+    }
+    const label = labels[i++]!;
+    const state = publicState(room);
+    const choice = state.choices.find((c) => c.label.includes(label)) ?? state.choices[0];
+    assert.ok(choice, `no choice at ${room.nodeId} looking for ${label}`);
+    choose(room.roomCode, choice.id, playerId);
+  }
   return { room, playerId };
 }
 
@@ -62,7 +74,7 @@ test("a defeat can be retried from the top, never leaving a dead board", () => {
   assert.throws(() => combatEndTurn(room.roomCode, playerId), /COMBAT_OVER/);
   retryCombat(room.roomCode);
   assert.equal(room.combat?.status, "active");
-  assert.ok(room.combat?.tokens.filter((t) => t.kind === "pc").every((t) => !t.dead && t.hp === t.maxHp));
+  assert.ok(room.combat?.tokens.filter((t) => t.kind === "pc").every((t) => !t.dead && t.hp >= 1 && t.hp <= t.maxHp));
   assert.match(room.lastNarration ?? "", /anew/);
 });
 
@@ -75,7 +87,7 @@ test("withdrawing from a lost fight returns to safe ground", () => {
   assert.equal(room.combat, undefined);
 });
 
-test("puzzles never spell out the answer: a nudge first, then the failure branch keeps the seal", () => {
+test("puzzles never spell out the answer: a nudge first, then the trap leaves the puzzle open", () => {
   const created = createRoom();
   const { room } = joinRoom(created.roomCode, "Tester", "mira_softstep");
   room.nodeId = "cellar_vessels";
@@ -93,11 +105,11 @@ test("puzzles never spell out the answer: a nudge first, then the failure branch
   } finally {
     restore();
   }
-  assert.equal(getRoom(room.roomCode)?.nodeId, "corridor_hub");
-  assert.ok(room.flags.includes("seal_cellar"), "the forced slab still counts as a seal");
+  assert.equal(getRoom(room.roomCode)?.nodeId, "cellar_vessels");
+  assert.ok(!room.flags.includes("seal_cellar"), "failure never gifts the seal");
   assert.equal(room.lastDice?.outcome, "fail");
   assert.equal(room.lastDice?.vs?.value, 13);
-  assert.match(room.lastNarration ?? "", /takes 16 fire/);
+  assert.match(room.puzzleFeedback ?? "", /try again/i);
 });
 
 test("the correct sequence opens the puzzle", () => {

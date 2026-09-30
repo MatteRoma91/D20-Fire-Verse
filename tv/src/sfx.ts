@@ -34,6 +34,11 @@ const VARIANTS = {
   chapter: ["chapter"],
   seal: ["seal"],
   puzzleStep: ["puzzle_step"],
+  puzzleLock: ["puzzle_lock"],
+  puzzleReset: ["puzzle_reset"],
+  puzzlePour: ["puzzle_pour"],
+  arrow: ["arrow"],
+  arrowHit: ["arrow_hit"],
   trap: ["trap"],
 } as const;
 

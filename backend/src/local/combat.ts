@@ -276,6 +276,7 @@ function emit(combat: CombatState, event: EventInput): void {
 export function startCombat(
   encounterId: string,
   players: Player[],
+  wounds?: Record<string, number>,
 ): CombatState {
   const encounter = getEncounter(encounterId);
   if (!encounter) throw new Error("BAD_ENCOUNTER");
@@ -291,14 +292,16 @@ export function startCombat(
     if (!pregen) throw new Error("BAD_CHARACTER");
     const spot = map.spawn.pcs[i] || map.spawn.pcs[0];
     const initRoll = rollD20() + abilityMod(pregen.abilities.dex);
-    tokens.push({
+      const maxHp = pregen.hp;
+      const hp = Math.max(1, maxHp - (wounds?.[p.playerId] ?? 0));
+      tokens.push({
       id: `pc-${p.playerId}`,
       kind: "pc",
       name: pregen.name,
       x: spot.x,
       y: spot.y,
-      hp: pregen.hp,
-      maxHp: pregen.hp,
+      hp,
+      maxHp,
       ac: pregen.ac,
       speedCells: pregen.speedCells ?? 6,
       movementLeft: pregen.speedCells ?? 6,
@@ -1126,7 +1129,10 @@ export function performPcAction(
   return { rolls };
 }
 
-/** Cone spells: every foe within reach and roughly in the aimed direction saves. */
+/** A cone is as wide as it is long, so the half-angle from the aim line is atan(0.5) ≈ 26.5°. */
+const CONE_HALF_ANGLE = Math.atan(0.5);
+
+/** Cone spells: every foe inside the cone makes the save. The aimed foe is always included. */
 function castSaveArea(
   combat: CombatState,
   t: CombatToken,
@@ -1149,7 +1155,7 @@ function castSaveArea(
     const ex = e.x - t.x;
     const ey = e.y - t.y;
     const cos = (ex * dirX + ey * dirY) / ((Math.hypot(ex, ey) || 1) * dirLen);
-    return cos >= Math.cos((53 * Math.PI) / 180);
+    return cos >= Math.cos(CONE_HALF_ANGLE);
   });
   const dmgSpec = (effect.damage as Array<{ dice: string; damageType: string }>)[0];
   const rolled = rollNotation(dmgSpec.dice);
@@ -1177,11 +1183,25 @@ function castSaveArea(
       purpose: "save",
     });
     rolls.push(save);
-    const dmg = save.outcome === "success" ? (effect.halfOnSuccess ? Math.floor(rolled.total / 2) : 0) : rolled.total;
-    hits.push({ targetId: e.id, outcome: save.outcome === "success" ? "miss" : "hit", damage: dmg, hp: Math.max(0, e.hp - dmg) });
+    const saved = save.outcome === "success";
+    const dmg = saved ? (effect.halfOnSuccess ? Math.floor(rolled.total / 2) : 0) : rolled.total;
+    hits.push({
+      targetId: e.id,
+      outcome: saved ? "success" : "fail",
+      damage: dmg,
+      hp: Math.max(0, e.hp - dmg),
+    });
   }
   t.hidden = false;
   spendEconomy(t, isBonus);
+  const blow = hits
+    .map((h) => {
+      const foe = combat.tokens.find((x) => x.id === h.targetId);
+      const who = foe?.name ?? "A creature";
+      if (h.damage <= 0) return `${who} saves`;
+      return h.outcome === "success" ? `${who} takes ${h.damage} (half)` : `${who} takes ${h.damage}`;
+    })
+    .join("; ");
   emit(combat, {
     kind: "strike",
     tokenId: t.id,
@@ -1189,7 +1209,7 @@ function castSaveArea(
     style: "spell",
     rolls,
     hits,
-    line: `${t.name} casts ${name}: ${hits.length} caught in the flames, DC ${dc}.`,
+    line: `${t.name} casts ${name}: ${blow}. DC ${dc} ${saveKey.toUpperCase()}.`,
   });
   for (const h of hits) {
     const e = combat.tokens.find((x) => x.id === h.targetId)!;

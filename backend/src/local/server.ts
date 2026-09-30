@@ -3,6 +3,9 @@ import os from "node:os";
 import path from "node:path";
 import fs from "node:fs";
 import express from "express";
+import { actionNeedsAuth, type SessionUser } from "./auth.js";
+import { handleCampaignImport, mountAccountRoutes, mountAdminRoutes, requestUser } from "./admin-http.js";
+import { listPublished } from "./catalog.js";
 import { WebSocketServer, type WebSocket } from "ws";
 import { loadCampaign, listPregens, getManifest, portraitForCharacter, PORTRAITS, portraitUrl } from "./campaign.js";
 import {
@@ -16,6 +19,13 @@ import { ensureDataDir, REPO_ROOT } from "./paths.js";
 import { audioPath, narrationStatus, prewarmNarration, waitForNarration } from "./narration.js";
 import {
   choose,
+  castVote,
+  closeVote,
+  claimPuzzle,
+  releasePuzzle,
+  puzzleHint,
+  setPuzzleDraft,
+  volunteerCheck,
   combatAttack,
   combatEndTurn,
   mapMove,
@@ -32,6 +42,7 @@ import {
   resumeSave,
   retryCombat,
   scriptedLines,
+  setRoomMutationHook,
   voiceIntent,
   solvePuzzleSequence,
   type Room,
@@ -45,6 +56,7 @@ const DROP_GRACE_MS = Number(process.env.DROP_GRACE_MS || 20000);
 type ClientMsg = {
   action: string;
   roomCode?: string;
+  campaignId?: string;
   displayName?: string;
   characterId?: string;
   choiceId?: string;
@@ -59,6 +71,10 @@ type ClientMsg = {
   intent?: string;
   draft?: ChargenDraft;
   sequence?: string[];
+  slot?: number;
+  optionId?: string;
+  puzzleDraft?: string[];
+  help?: boolean;
 };
 
 ensureDataDir();
@@ -68,7 +84,10 @@ loadPersistedRooms();
 
 const app = express();
 app.disable("x-powered-by");
-app.use(express.json({ limit: "64kb" }));
+app.post("/api/admin/campaigns/import", express.raw({ type: () => true, limit: "32mb" }), handleCampaignImport);
+app.use(express.json({ limit: "2mb" }));
+mountAccountRoutes(app);
+mountAdminRoutes(app);
 app.use((_req, res, next) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
@@ -208,6 +227,7 @@ const wss = new WebSocketServer({ server, path: "/ws" });
 type Sock = WebSocket & {
   roomCode?: string;
   playerId?: string;
+  user?: SessionUser | null;
   abilityRolls?: number[];
   alive?: boolean;
 };
@@ -233,6 +253,8 @@ function broadcast(roomCode: string): void {
     }
   }
 }
+
+setRoomMutationHook((roomCode) => broadcast(roomCode));
 
 function send(ws: WebSocket, obj: unknown): void {
   if (ws.readyState === 1) ws.send(JSON.stringify(obj));
@@ -290,9 +312,10 @@ function armDropTimer(roomCode: string, playerId: string) {
   );
 }
 
-wss.on("connection", (ws) => {
+wss.on("connection", (ws, req) => {
   const sock = ws as Sock;
   sock.alive = true;
+  sock.user = requestUser(req);
   sock.on("pong", () => {
     sock.alive = true;
   });
@@ -301,6 +324,8 @@ wss.on("connection", (ws) => {
     payload: {
       mode: "local",
       campaign: getManifest().title,
+      campaigns: listPublished(),
+      user: sock.user ? { username: sock.user.username, role: sock.user.role } : null,
       pregens: pregenList(),
       portraits: PORTRAITS.map((id) => ({ id, url: portraitUrl(id) })),
       chargen: getChargenCatalog(),
@@ -337,6 +362,7 @@ wss.on("connection", (ws) => {
 });
 
 function handle(sock: Sock, msg: ClientMsg): void {
+  if (actionNeedsAuth(msg.action) && !sock.user) throw new Error("AUTH_REQUIRED");
   const pid = () => {
     const id = msg.playerId || sock.playerId;
     if (!id) throw new Error("NO_PLAYER");
@@ -344,7 +370,7 @@ function handle(sock: Sock, msg: ClientMsg): void {
   };
   switch (msg.action) {
     case "CREATE_ROOM": {
-      const room = createRoom();
+      const room = createRoom({ campaignId: msg.campaignId, ownerUserId: sock.user!.id });
       bind(sock, room);
       send(sock, { eventType: "ROOM_STATE", payload: publicState(room) });
       return;
@@ -381,7 +407,7 @@ function handle(sock: Sock, msg: ClientMsg): void {
     }
     case "JOIN_ROOM": {
       if (!msg.roomCode || !msg.characterId) throw new Error("MISSING_FIELDS");
-      const { room, playerId } = joinRoom(msg.roomCode, msg.displayName || "Player", msg.characterId);
+      const { room, playerId } = joinRoom(msg.roomCode, msg.displayName || "Player", msg.characterId, sock.user!.id);
       bind(sock, room, playerId);
       broadcast(room.roomCode);
       return;
@@ -395,12 +421,47 @@ function handle(sock: Sock, msg: ClientMsg): void {
     }
     case "CHOOSE": {
       if (!msg.roomCode || !msg.choiceId) throw new Error("MISSING_FIELDS");
-      broadcast(choose(msg.roomCode, msg.choiceId).roomCode);
+      broadcast(choose(msg.roomCode, msg.choiceId, msg.playerId || sock.playerId).roomCode);
+      return;
+    }
+    case "CAST_VOTE": {
+      if (!msg.roomCode || !msg.choiceId) throw new Error("MISSING_FIELDS");
+      broadcast(castVote(msg.roomCode, pid(), msg.choiceId).roomCode);
+      return;
+    }
+    case "CLOSE_VOTE": {
+      if (!msg.roomCode) throw new Error("MISSING_FIELDS");
+      broadcast(closeVote(msg.roomCode).roomCode);
+      return;
+    }
+    case "VOLUNTEER_CHECK": {
+      if (!msg.roomCode) throw new Error("MISSING_FIELDS");
+      broadcast(volunteerCheck(msg.roomCode, pid(), !!msg.help).roomCode);
+      return;
+    }
+    case "CLAIM_PUZZLE": {
+      if (!msg.roomCode) throw new Error("MISSING_FIELDS");
+      broadcast(claimPuzzle(msg.roomCode, pid()).roomCode);
+      return;
+    }
+    case "RELEASE_PUZZLE": {
+      if (!msg.roomCode) throw new Error("MISSING_FIELDS");
+      broadcast(releasePuzzle(msg.roomCode, pid()).roomCode);
+      return;
+    }
+    case "PUZZLE_HINT": {
+      if (!msg.roomCode || msg.slot === undefined || !msg.optionId) throw new Error("MISSING_FIELDS");
+      broadcast(puzzleHint(msg.roomCode, pid(), msg.slot, msg.optionId).roomCode);
+      return;
+    }
+    case "PUZZLE_DRAFT": {
+      if (!msg.roomCode || !msg.puzzleDraft) throw new Error("MISSING_FIELDS");
+      broadcast(setPuzzleDraft(msg.roomCode, pid(), msg.puzzleDraft).roomCode);
       return;
     }
     case "SOLVE_PUZZLE": {
       if (!msg.roomCode || !msg.sequence?.length) throw new Error("MISSING_FIELDS");
-      broadcast(solvePuzzleSequence(msg.roomCode, msg.sequence).roomCode);
+      broadcast(solvePuzzleSequence(msg.roomCode, msg.sequence, msg.playerId || sock.playerId).roomCode);
       return;
     }
     case "WITHDRAW": {
@@ -442,7 +503,7 @@ function handle(sock: Sock, msg: ClientMsg): void {
     }
     case "RESUME_SAVE": {
       if (!msg.saveId) throw new Error("MISSING_FIELDS");
-      const room = resumeSave(msg.saveId);
+      const room = resumeSave(msg.saveId, sock.user!);
       const seat = room.players[0]?.playerId;
       bind(sock, room, seat);
       send(sock, { eventType: "ROOM_STATE", payload: publicState(room, seat) });

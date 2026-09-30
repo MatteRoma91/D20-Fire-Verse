@@ -128,9 +128,37 @@ export type RoomState = {
   narration?: string;
   narrationSeq: number;
   voice: Voice | null;
+  speaker?: { id: string; name: string; portrait: string } | null;
   choices: Array<{ id: string; label: string }>;
   skillCheck?: { ability: string; skill?: string; dc: number };
-  puzzle: { kind: string; picked: string[]; need: number; fails: number; feedback: string } | null;
+  vote?: {
+    nodeId: string;
+    votes: Array<{ playerId: string; choiceId: string; name: string; portrait: string | null }>;
+    closesAt: number;
+    remainingMs: number;
+  } | null;
+  checkOffer?: {
+    nodeId: string;
+    volunteers: string[];
+    helpers: string[];
+    remainingMs: number;
+    roster: Array<{ playerId: string; name: string; bonus: number }>;
+  } | null;
+  puzzle: {
+    kind: string;
+    picked: string[];
+    need: number;
+    fails: number;
+    feedback: string;
+    draft?: string[];
+    holderId?: string | null;
+    holderName?: string | null;
+    hints?: Array<{ playerId: string; name: string; slot: number; optionId: string }>;
+    history?: Array<{ guess: string[]; black: number; white: number }>;
+    lastScore?: { black: number; white: number } | null;
+    poem?: string[] | null;
+    nudge?: string | null;
+  } | null;
   players: Player[];
   flags: string[];
   seals: number;
@@ -138,6 +166,8 @@ export type RoomState = {
   currentRoom: DungeonRoomId | null;
   mapTokens: Array<{ playerId: string; name: string; room: DungeonRoomId; x: number; y: number }>;
   lastDice: DiceRoll | null;
+  diceQueue?: DiceRoll[];
+  fx?: "arrows" | null;
   combat: CombatPublic | null;
   combatOutro: (CombatPublic & { outroText: string; voice: Voice | null }) | null;
   savePrompt: boolean;
