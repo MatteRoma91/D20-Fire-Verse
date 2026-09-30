@@ -1,5 +1,7 @@
+import type { CastMember } from "@d20-fireverse/protocol";
 import { getCustomCharacter, listCustomCharacters } from "./chargen.js";
 import { currentSnapshot, initCatalog } from "./catalog.js";
+import { configureVoices, type VoiceFx } from "./narration.js";
 import { PORTRAITS, defaultPortrait, isPortraitId, portraitUrl } from "./portraits.js";
 
 export type Manifest = {
@@ -7,7 +9,19 @@ export type Manifest = {
   title: string;
   startNodeId: string;
   pregenIds: string[];
+  /** Speaking characters: how the table shows them and how the server voices them. */
+  cast?: Record<string, CastDef>;
   alexaHints?: Record<string, unknown>;
+};
+
+export type CastDef = {
+  name: string;
+  title: string;
+  color: string;
+  voice: string;
+  speed: number;
+  pitch?: number;
+  fx?: VoiceFx;
 };
 
 export type StoryNode = {
@@ -122,14 +136,24 @@ export type AbilityDef = {
 
 export function loadCampaign(): void {
   initCatalog();
+  configureVoices(currentSnapshot().manifest.cast);
 }
 
 function pack() {
-  return currentSnapshot();
+  const snap = currentSnapshot();
+  configureVoices(snap.manifest.cast);
+  return snap;
 }
 
 export function getManifest(): Manifest {
   return pack().manifest;
+}
+
+/** The cast as the table shows it; voices stay on the server. */
+export function publicCast(): Record<string, CastMember> {
+  return Object.fromEntries(
+    Object.entries(pack().manifest.cast ?? {}).map(([id, c]) => [id, { name: c.name, title: c.title, color: c.color, pitch: c.pitch ?? 1 }]),
+  );
 }
 
 export function getNode(id: string): StoryNode | undefined {

@@ -4,13 +4,14 @@
  * Falls back to the browser voice when the server has no clip in time.
  */
 
+import { scriptLines, type CastMember } from "@d20-fireverse/protocol";
 import { audioReady } from "./audio";
 import { duckMusic } from "./music";
 import { settings } from "./settings";
 import type { Voice } from "./types";
 
-export type Cue = { text: string; start: number; end: number };
-export type SpokenCue = { line: string; index: number; cues: Cue[]; text: string } | null;
+export type Cue = { text: string; start: number; end: number; speaker?: string };
+export type SpokenCue = { line: string; index: number; cues: Cue[]; text: string; speaker: string | null } | null;
 
 type Clip = { key: string; text: string; duration: number; cues: Cue[]; url: string };
 
@@ -26,6 +27,12 @@ let running = false;
 let generation = 0;
 let stopCurrent: (() => void) | null = null;
 let lastVoice: Voice | null = null;
+let cast: Record<string, CastMember> = {};
+
+/** Who can speak at this table (used by the browser-voice fallback). */
+export function setCast(next: Record<string, CastMember> | undefined) {
+  cast = next ?? {};
+}
 
 function emit(cue: SpokenCue) {
   for (const fn of cueListeners) fn(cue);
@@ -46,6 +53,13 @@ function splitSentences(text: string): string[] {
     .flatMap((p) => p.match(/[^.!?…]+[.!?…]+["')\]]*|[^.!?…]+$/g) ?? [])
     .map((s) => s.trim())
     .filter(Boolean);
+}
+
+/** Sentence cues with their speaker, for when there is no server clip to time them. */
+function scriptedCues(text: string): Cue[] {
+  return scriptLines(text).flatMap((l) =>
+    splitSentences(l.text).map((s) => ({ text: s, start: 0, end: 0, ...(l.speaker && cast[l.speaker] ? { speaker: l.speaker } : {}) })),
+  );
 }
 
 async function fetchClip(key: string): Promise<{ clip: Clip; buffer: AudioBuffer } | null> {
@@ -112,7 +126,8 @@ function playBuffer(clip: Clip, buffer: AudioBuffer, gen: number): Promise<void>
       if (index < 0 && t > 0) index = lastIndex;
       if (index !== lastIndex) {
         lastIndex = index;
-        emit(index >= 0 ? { line: clip.text, index, cues: clip.cues, text: clip.cues[index]!.text } : null);
+        const cue = index >= 0 ? clip.cues[index]! : null;
+        emit(cue ? { line: clip.text, index, cues: clip.cues, text: cue.text, speaker: cue.speaker ?? null } : null);
       }
       raf = requestAnimationFrame(tick);
     };
@@ -131,10 +146,9 @@ function playBuffer(clip: Clip, buffer: AudioBuffer, gen: number): Promise<void>
 }
 
 function speakFallback(text: string, gen: number): Promise<void> {
-  const sentences = splitSentences(text);
+  const cues = scriptedCues(text);
   const synth = window.speechSynthesis;
-  const cues: Cue[] = sentences.map((s, i) => ({ text: s, start: i, end: i + 1 }));
-  if (!synth || !sentences.length) {
+  if (!synth || !cues.length) {
     return readAlong(text, cues, gen);
   }
   return new Promise((resolve) => {
@@ -152,12 +166,15 @@ function speakFallback(text: string, gen: number): Promise<void> {
       finish();
     };
     const next = () => {
-      if (gen !== generation || i >= sentences.length) return finish();
-      const u = new SpeechSynthesisUtterance(sentences[i]!);
+      if (gen !== generation || i >= cues.length) return finish();
+      const cue = cues[i]!;
+      const who = cue.speaker ? cast[cue.speaker] : undefined;
+      const u = new SpeechSynthesisUtterance(cue.text);
       u.lang = "en-GB";
-      u.rate = 0.98;
+      u.rate = who ? 1.02 : 0.98;
+      u.pitch = Math.min(2, Math.max(0, who?.pitch ?? 1));
       u.volume = Math.min(1, settings().voice);
-      emit({ line: text, index: i, cues, text: sentences[i]! });
+      emit({ line: text, index: i, cues, text: cue.text, speaker: cue.speaker ?? null });
       u.onend = () => {
         i += 1;
         next();
@@ -184,7 +201,7 @@ function readAlong(text: string, cues: Cue[], gen: number): Promise<void> {
     stopCurrent = finish;
     const step = () => {
       if (gen !== generation || i >= cues.length) return finish();
-      emit({ line: text, index: i, cues, text: cues[i]!.text });
+      emit({ line: text, index: i, cues, text: cues[i]!.text, speaker: cues[i]!.speaker ?? null });
       const words = cues[i]!.text.split(/\s+/).length;
       i += 1;
       timer = window.setTimeout(step, Math.max(1400, words * 330));
@@ -198,7 +215,7 @@ async function run(job: Job) {
   const v = job.voice;
   const s = settings();
   if (!s.narration) {
-    if (s.subtitles) await readAlong(v.text, splitSentences(v.text).map((t, i) => ({ text: t, start: i, end: i + 1 })), gen);
+    if (s.subtitles) await readAlong(v.text, scriptedCues(v.text), gen);
     return;
   }
   duckMusic(true);

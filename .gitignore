@@ -26,6 +26,12 @@ Thumbs.db
 *.apk
 *.aab
 *.ipa
+!releases/firetv/*.apk
+
+# Fire TV app
+firetv/.gradle/
+firetv/local.properties
+firetv/.kotlin/
 
 # Logs / coverage
 coverage/

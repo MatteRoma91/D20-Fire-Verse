@@ -30,7 +30,7 @@
     "alexaScene": "tavern",
     "speaker": { "id": "messenger", "name": "A messenger" },
     "narration": {
-      "text": "A messenger shrugs. Glowkindle pays well, but he says the rats down there watch you. I wouldn't go sober — and I've lived in Luppolandia forever."
+      "text": "A messenger shrugs. [[messenger: Glowkindle pays well. But the rats down there watch you, he says. I wouldn't go sober — and I've lived in Luppolandia forever.]]"
     },
     "choices": [
       {
@@ -46,7 +46,7 @@
     "alexaScene": "tavern",
     "speaker": { "id": "glowkindle", "name": "Glowkindle" },
     "narration": {
-      "text": "The dirt road climbs past hedges and hay. Malt on the wind — and older stone. At the hilltop: grey stone, two barns, a creaking sign. A rock gnome in green braces shoves a mug into your hands. Drink. It's Tashalar Pale Ale — the last I've got. Then we talk. Make the beasts disappear. Find where they come from. Until something moves below, I don't reopen the vats. Seventy-five gold each. Beer for a month. Old gold you find is yours — I just want to sleep without squeaking."
+      "text": "The dirt road climbs past hedges and hay. Malt on the wind — and older stone. At the hilltop: grey stone, two barns, a creaking sign. A rock gnome in green braces shoves a mug into your hands. [[glowkindle: Drink. It's Tashalar Pale Ale — the last I've got. Then we talk. Make the beasts disappear. Find where they come from. Until something moves below, I don't reopen the vats. Seventy-five gold each. Beer for a month. Old gold you find is yours — I just want to sleep without squeaking.]]"
     },
     "choices": [
       {
@@ -99,7 +99,7 @@
     "alexaScene": "tavern",
     "speaker": { "id": "glowkindle", "name": "Glowkindle" },
     "narration": {
-      "text": "One hundred gold each, when the squeaking stops. Beer for a month. He spits in his palm and offers it."
+      "text": "[[glowkindle: One hundred gold each, when the squeaking stops. Beer for a month.]] He spits in his palm and offers it."
     },
     "choices": [
       {
@@ -240,7 +240,7 @@
     "alexaScene": "explore",
     "speaker": { "id": "glowkindle", "name": "Glowkindle" },
     "narration": {
-      "text": "Behind the bar, Glowkindle lifts a jute rug and a hidden trapdoor. Stone stairs sink into a buried wizard's tower. Dust. Cold. He stays above. If you hear something… don't call me. Or do. I don't know. Go."
+      "text": "Behind the bar, Glowkindle lifts a jute rug and a hidden trapdoor. Stone stairs sink into a buried wizard's tower. Dust. Cold. He stays above. [[glowkindle: If you hear something… don't call me. Or do. I don't know. Go.]]"
     },
     "choices": [
       {
@@ -279,7 +279,7 @@
     "type": "puzzle",
     "alexaScene": "explore",
     "narration": {
-      "text": "A poem is scratched beside the mosaic:\n\nThe amethyst tear that metal scratches and does not crush,\nthe cold ash of a fire that is no more,\nthe deep abyss where light dies,\nthe wound of the sky before the horizon falls silent.\n\nTouch four tiles in order. Color is enough."
+      "text": "A poem is scratched beside the mosaic, and the stone reads it back to you:\n\n[[wizard: The amethyst tear that metal scratches and does not crush,\nthe cold ash of a fire that is no more,\nthe deep abyss where light dies,\nthe wound of the sky before the horizon falls silent.]]\n\nTouch four tiles in order. Color is enough."
     },
     "puzzle": {
       "kind": "sequence",
@@ -473,7 +473,7 @@
     "type": "story",
     "alexaScene": "explore",
     "narration": {
-      "text": "A stone well with a rotten rope and pulley. Daylight leaks from a ceiling crack and snuffs torches as if it hates them. Two carvings on the rim: one lists four lock marks; the other reads — The weight that sinks to the bottom breaks the seal of the deep."
+      "text": "A stone well with a rotten rope and pulley. Daylight leaks from a ceiling crack and snuffs torches as if it hates them. Two carvings on the rim: one lists four lock marks. The other breathes up from the dark. [[well: The weight that sinks to the bottom breaks the seal of the deep.]]"
     },
     "choices": [
       {
@@ -488,7 +488,7 @@
     "type": "puzzle",
     "alexaScene": "explore",
     "narration": {
-      "text": "Four sockets, too many symbols. The carving whispers: First what bites the rope; then the fallen star; then the eye of the night sky; finally what has no shape and yet flows."
+      "text": "Four sockets, too many symbols. The carving whispers. [[well: First, what bites the rope. Then the fallen star. Then the eye of the night sky. Finally, what has no shape and yet flows.]]"
     },
     "puzzle": {
       "kind": "sequence",
@@ -649,7 +649,7 @@
     "type": "puzzle",
     "alexaScene": "explore",
     "narration": {
-      "text": "Three gestures for the seal of my study: question objects under a sunless sky → a border against spirits → anoint the slabs. Basin I, II, III. Fourteen reagents glitter — only three are true. The note never says the words moon, salt, or oil."
+      "text": "The wizard's note is still warm with old magic. [[wizard: Three gestures for the seal of my study. Question objects under a sunless sky. Raise a border against spirits. Anoint the slabs.]] Basin I, II, III. Fourteen reagents glitter — only three are true. The note never says the words moon, salt, or oil."
     },
     "puzzle": {
       "kind": "sequence",
@@ -802,7 +802,7 @@
     "type": "story",
     "alexaScene": "boss",
     "narration": {
-      "text": "Cracked glass. Scorched tables. Something large waits on the ceiling. Silk glints with embers. The threshold hole behind you goes… listening."
+      "text": "Cracked glass. Scorched tables. Something large waits on the ceiling. Silk glints with embers. [[spider: Warm little morsels… come closer. Mother is so very hungry.]] The threshold hole behind you goes… listening."
     },
     "choices": [
       {
@@ -859,7 +859,7 @@
     "alexaScene": "explore",
     "savePrompt": true,
     "narration": {
-      "text": "The mosaic corridor glows orange. Fur and lava block the runner. A Magma Rat the size of a hound grins with molten teeth — the exit tax of Luppolandia."
+      "text": "The mosaic corridor glows orange. Fur and lava block the runner. A Magma Rat the size of a hound grins with molten teeth — the exit tax of Luppolandia. [[magma_rat: Nobody leaves the tower without paying. I take my toll in blood.]]"
     },
     "choices": [
       {
@@ -908,7 +908,7 @@
     "alexaScene": "tavern",
     "speaker": { "id": "glowkindle", "name": "Glowkindle" },
     "narration": {
-      "text": "Glowkindle meets you with shaking hands and full mugs. The squeaking is gone. Seventy-five gold each, beer for a month — and the last of the Tashalar Pale Ale tastes like victory with a metallic aftertaste only Luppolandia knows."
+      "text": "Glowkindle meets you with shaking hands and full mugs. [[glowkindle: It's quiet. It's actually quiet! Drink, drink — every drop is yours.]] The squeaking is gone. Seventy-five gold each, beer for a month — and the last of the Tashalar Pale Ale tastes like victory with a metallic aftertaste only Luppolandia knows."
     },
     "choices": [
       { "id": "done", "label": "End adventure", "next": "END_WIN" }

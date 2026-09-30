@@ -24,6 +24,60 @@
     "mira_softstep",
     "torin_emberhand"
   ],
+  "cast": {
+    "glowkindle": {
+      "name": "Glowkindle",
+      "title": "Rock gnome brewmaster",
+      "color": "#9ad67f",
+      "voice": "am_puck",
+      "speed": 1.06,
+      "pitch": 1.24
+    },
+    "messenger": {
+      "name": "The Messenger",
+      "title": "Luppolandia local",
+      "color": "#e2b77a",
+      "voice": "bf_emma",
+      "speed": 1.02,
+      "pitch": 1.0
+    },
+    "wizard": {
+      "name": "The Tower Wizard",
+      "title": "Words left in stone",
+      "color": "#b8a2ff",
+      "voice": "bm_fable",
+      "speed": 0.88,
+      "pitch": 0.93,
+      "fx": "echo"
+    },
+    "well": {
+      "name": "The Well",
+      "title": "A voice from the deep",
+      "color": "#7fcbe9",
+      "voice": "af_nicole",
+      "speed": 0.86,
+      "pitch": 0.96,
+      "fx": "cavern"
+    },
+    "spider": {
+      "name": "Infernal Spider",
+      "title": "Mother of the ember silk",
+      "color": "#ff6b45",
+      "voice": "af_bella",
+      "speed": 0.84,
+      "pitch": 0.82,
+      "fx": "hiss"
+    },
+    "magma_rat": {
+      "name": "Magma Rat",
+      "title": "The exit tax",
+      "color": "#ffa237",
+      "voice": "am_fenrir",
+      "speed": 0.95,
+      "pitch": 0.78,
+      "fx": "growl"
+    }
+  },
   "flow": [
     "hook_notice",
     "glowkindle",

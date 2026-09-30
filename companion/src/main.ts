@@ -1,7 +1,7 @@
 import "@fontsource/cinzel/700.css";
 import "@fontsource-variable/literata/opsz.css";
 import "./styles.css";
-import { describeError, srdLabel } from "@d20-fireverse/protocol";
+import { describeError, plainNarration, srdLabel } from "@d20-fireverse/protocol";
 
 interface SpeechAlt {
   readonly transcript: string;
@@ -357,7 +357,7 @@ function renderSeat() {
     }),
   );
   const speaker = s.speaker;
-  const narrLead = (s.narration ?? "").split(/\n{2,}/)[0]!.slice(0, 320);
+  const narrLead = plainNarration(s.narration).split(/\n{2,}/)[0]!.slice(0, 320);
   const narr = $("narr");
   if (speaker?.portrait) {
     narr.innerHTML = `<span class="speaker-inline"><img src="${esc(speaker.portrait)}" alt="" /><strong>${esc(speaker.name)}</strong></span>`;

@@ -7,6 +7,7 @@ import {
   getPregen,
   loadCampaign,
   portraitForCharacter,
+  publicCast,
   type StoryNode,
 } from "./campaign.js";
 import {
@@ -604,6 +605,7 @@ function publicStateBody(room: Room, viewerPlayerId?: string) {
     alexaScene: publishedScene(room, node),
     narration: room.lastNarration,
     narrationSeq: seq,
+    cast: publicCast(),
     voice: voiceFor(room.voiceText ?? room.lastNarration, seq),
     speaker,
     choices: choices.map((c) => ({ id: c.id, label: c.label })),

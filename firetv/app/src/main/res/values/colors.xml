@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="night">#FF0C0906</color>
+    <color name="panel">#E6140E0A</color>
+    <color name="ink">#FFF6EAD6</color>
+    <color name="ink_dim">#FFC9B79B</color>
+    <color name="gold">#FFF1C46B</color>
+    <color name="line">#40F1C46B</color>
+</resources>

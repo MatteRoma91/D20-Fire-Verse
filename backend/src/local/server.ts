@@ -15,6 +15,7 @@ import {
   rollAbilityScores,
   type ChargenDraft,
 } from "./chargen.js";
+import { announceTable } from "./announce.js";
 import { ensureDataDir, REPO_ROOT } from "./paths.js";
 import { audioPath, narrationStatus, prewarmNarration, waitForNarration } from "./narration.js";
 import {
@@ -544,4 +545,14 @@ server.listen(PORT, "0.0.0.0", () => {
       : "Serving tv/local (fallback HTML)",
   );
   prewarmNarration(scriptedLines());
+  const withdraw = announceTable(PORT, getManifest().id);
+  for (const signal of ["SIGINT", "SIGTERM"] as const) {
+    process.once(signal, () => {
+      const exit = setTimeout(() => process.exit(0), 1500);
+      withdraw(() => {
+        clearTimeout(exit);
+        process.exit(0);
+      });
+    });
+  }
 });
