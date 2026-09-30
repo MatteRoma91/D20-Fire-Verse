@@ -1,0 +1,14 @@
+Chiavi SSH del server D20 FireVerse (Ubuntu 26.04).
+
+Pubbliche (queste due, più quelle già sull'account):
+  valerio.pub   SHA256:xuM/4Wk3kn6V8s/PIPEYNmwtAIlw29kCxbXVUjsZ91E
+  matteo.pub    SHA256:sjp0XdN+kIwz+lak1no8Z2SdXNfqi2Phu3eTvctd8TI
+
+L'installer di Ubuntu, con "Import SSH identity → from GitHub", scarica
+github.com/UTENTE.keys cioè le chiavi registrate sull'account, non i file
+di questo repository. Vanno aggiunte entrambe su
+https://github.com/settings/keys dell'account Polimar, poi nel dialogo
+si scrive il username Polimar.
+
+Le private non stanno qui. Una per Valerio, una per Matteo: non si condivide
+la stessa chiave.
