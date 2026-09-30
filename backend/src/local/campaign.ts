@@ -1,5 +1,6 @@
 import type { CastMember } from "@d20-fireverse/protocol";
 import { getCustomCharacter, listCustomCharacters } from "./chargen.js";
+import { srdAbility } from "./srd-sheet.js";
 import { currentSnapshot, initCatalog } from "./catalog.js";
 import { configureVoices, type VoiceFx } from "./narration.js";
 import { PORTRAITS, defaultPortrait, isPortraitId, portraitUrl } from "./portraits.js";
@@ -181,7 +182,7 @@ export function getMonster(id: string): MonsterDef | undefined {
 }
 
 export function getAbility(id: string): AbilityDef | undefined {
-  return pack().abilities[id];
+  return pack().abilities[id] ?? srdAbility(id);
 }
 
 export { PORTRAITS, portraitUrl, isPortraitId };

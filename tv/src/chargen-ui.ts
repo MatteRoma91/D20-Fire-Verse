@@ -33,6 +33,7 @@ export type ChargenCatalog = {
     spellAbility: string | null;
     cantripsKnown: Record<string, number> | null;
     spellsKnown: Record<string, number> | null;
+    preparedFormula: string | null;
     domains: Array<{ id: string; label: string }> | null;
     fightingStyleRequired: boolean;
     fightingStyleAt: number | null;
@@ -541,10 +542,29 @@ export function mountChargen(opts: {
           content += `</div>`;
         }
       }
+      if (cls.preparedFormula && !cls.spellsKnown && cls.spellLists) {
+        const pool = [
+          ...(cls.spellLists["1"] ?? []),
+          ...(draft.level >= 3 ? cls.spellLists["2"] ?? [] : []),
+        ];
+        const ability = (cls.spellAbility ?? "int") as AbilityKey;
+        const race = cat.races.find((r) => r.id === draft.raceId);
+        const score = (draft.baseAbilities[ability] ?? 10) + (race?.abilityBonuses[ability] ?? 0);
+        const mod = Math.floor((score - 10) / 2);
+        const raw = cls.preparedFormula.includes("half") ? mod + Math.floor(draft.level / 2) : mod + draft.level;
+        const need = Math.max(1, Math.min(raw, pool.length));
+        content += `<p class="meta">Prepared spells (${draft.spellsKnown.length}/${need})</p><div class="cg-skills">`;
+        for (const sid of pool) {
+          const on = draft.spellsKnown.includes(sid);
+          content += `<button type="button" class="cg-chip ${on ? "selected" : ""}" data-spell="${sid}">${cat.spellCatalog[sid]?.label ?? sid}</button>`;
+        }
+        content += `</div>`;
+      }
       if (
         !needsStyle &&
         !cls.domains?.length &&
         !cls.cantripsKnown &&
+        !cls.preparedFormula &&
         !(cls.spellsKnown && (cls.spellsKnown[String(draft.level)] ?? 0) > 0)
       ) {
         content += `<p class="meta">No extra choices at this level — features unlock automatically.</p>
@@ -853,10 +873,8 @@ export function mountChargen(opts: {
         const poolLen =
           (cls.spellLists?.["1"]?.length ?? 0) +
           (draft.level >= 3 ? cls.spellLists?.["2"]?.length ?? 0 : 0);
-        const need = Math.min(
-          cls.spellsKnown?.[String(draft.level)] ?? 0,
-          poolLen,
-        );
+        const prepared = preparedCount(cls);
+        const need = prepared || Math.min(cls.spellsKnown?.[String(draft.level)] ?? 0, poolLen);
         const id = (b as HTMLElement).dataset.spell!;
         draft.spellsKnown = toggleMulti(draft.spellsKnown, id, need);
         render();
@@ -930,6 +948,26 @@ export function mountChargen(opts: {
       const need = Math.min(cls.spellsKnown[String(draft.level)] ?? 0, pool.length);
       if (need > 0) draft.spellsKnown = pool.slice(0, need);
     }
+    if (cls.preparedFormula && !cls.spellsKnown && cls.spellLists && draft.spellsKnown.length === 0) {
+      const pool = [
+        ...(cls.spellLists["1"] ?? []),
+        ...(draft.level >= 3 ? cls.spellLists["2"] ?? [] : []),
+      ];
+      const need = Math.min(preparedCount(cls), pool.length);
+      if (need > 0) draft.spellsKnown = pool.slice(0, need);
+    }
+  }
+
+  function preparedCount(cls: ChargenCatalog["classes"][number]): number {
+    if (!cls.preparedFormula) return 0;
+    const ability = (cls.spellAbility ?? "int") as AbilityKey;
+    const race = cat.races.find((r) => r.id === draft.raceId);
+    const score = (draft.baseAbilities[ability] ?? 10) + (race?.abilityBonuses[ability] ?? 0);
+    const mod = Math.floor((score - 10) / 2);
+    const raw = cls.preparedFormula.includes("half") ? mod + Math.floor(draft.level / 2) : mod + draft.level;
+    const poolLen =
+      (cls.spellLists?.["1"]?.length ?? 0) + (draft.level >= 3 ? cls.spellLists?.["2"]?.length ?? 0 : 0);
+    return Math.max(1, Math.min(raw, poolLen || raw));
   }
 
   function fail(msg: string): boolean {
@@ -1014,6 +1052,10 @@ export function mountChargen(opts: {
         if (need > 0 && draft.spellsKnown.length !== need) {
           return fail(`Pick ${need} spells.`);
         }
+      }
+      if (cls.preparedFormula && !cls.spellsKnown) {
+        const need = preparedCount(cls);
+        if (draft.spellsKnown.length !== need) return fail(`Prepare ${need} spells.`);
       }
     }
     if (draft.step === 7 && !draft.name.trim()) {

@@ -343,3 +343,38 @@ test("a real encounter opens with initiative and hands the turn to a hero", () =
   assert.ok(c.status !== "active" || current?.kind === "pc");
   assert.ok(c.tokens.filter((t) => t.kind === "enemy").length >= 2);
 });
+
+test("a hero reduced to 0 hit points is dying and the fight continues", () => {
+  const c = arena(3, 1, [brenna(0, 0, { hp: 4, maxHp: 20 }), rat("en-1", 1, 0)]);
+  const restore = scriptDice([
+    [20, 15],
+    [4, 3],
+    [20, 12],
+  ]);
+  try {
+    endTurn(c, "P1");
+  } finally {
+    restore();
+  }
+  const hero = c.tokens[0]!;
+  assert.equal(hero.dead, false);
+  assert.equal(hero.hp, 0);
+  assert.equal(hero.dying, true);
+  assert.equal(c.status, "active");
+});
+
+test("the wizard menu comes from the sheet and a spell spends a slot", () => {
+  const c = startCombat("cellar_rats", [
+    { playerId: "P1", displayName: "Q", characterId: "quill_ashmere", characterName: "Quill Ashmere" },
+  ]);
+  const hero = c.tokens.find((t) => t.kind === "pc")!;
+  assert.ok(hero.actionIds.includes("fire_bolt"));
+  assert.ok(hero.actionIds.includes("spell_magic_missile"));
+  assert.equal(hero.slots?.["1"], 4);
+  assert.equal(hero.slots?.["2"], 2);
+  c.turnIndex = c.turnOrder.indexOf(hero.id);
+  hero.hasAction = true;
+  const foe = c.tokens.find((t) => t.kind === "enemy" && !t.dead)!;
+  performPcAction(c, "P1", "spell_magic_missile", foe.id);
+  assert.equal(hero.slots?.["1"], 3);
+});

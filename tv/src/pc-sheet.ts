@@ -24,6 +24,9 @@ export type PcSheet = {
   speedCells: number;
   proficiencyBonus: number;
   abilities: Record<string, { score: number; mod: number; modLabel: string }>;
+  spellSlots?: Record<string, number> | null;
+  conditions?: string[];
+  concentrating?: string | null;
   savingThrows: string[];
   skills: string[];
   features: string[];
@@ -73,9 +76,18 @@ export function renderPcSheet(host: HTMLElement, sheet: PcSheet | null, tab: She
             return a ? `<div class="abil"><span>${k.toUpperCase()}</span><strong>${a.score}</strong><em>${a.modLabel}</em></div>` : "";
           })
           .join("");
+        const slots = sheet.spellSlots
+          ? Object.entries(sheet.spellSlots)
+              .filter(([, n]) => n > 0)
+              .map(([level, n]) => `L${level} ×${n}`)
+              .join(" · ")
+          : "";
         return `<div class="abil-grid">${abs}</div>
           <p class="meta">Saves ${sheet.savingThrows.map((s) => s.toUpperCase()).join(", ") || "—"}</p>
-          <p class="meta">Skills ${sheet.skills.map(pretty).join(", ") || "—"}</p>`;
+          <p class="meta">Skills ${sheet.skills.map(pretty).join(", ") || "—"}</p>
+          ${slots ? `<p class="meta">Slots ${slots}</p>` : ""}
+          ${sheet.concentrating ? `<p class="meta">Concentrating on ${pretty(sheet.concentrating)}</p>` : ""}
+          ${sheet.conditions?.length ? `<p class="meta">${sheet.conditions.join(", ")}</p>` : ""}`;
       }
       case "gear":
         return `<p class="meta">Weapons ${sheet.weapons.map(pretty).join(", ") || "—"}</p>

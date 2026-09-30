@@ -778,6 +778,15 @@ function renderChoices(s: RoomState) {
   box.querySelectorAll<HTMLElement>("[data-choice]").forEach((b) =>
     b.addEventListener("click", () => cast(b.dataset.choice!)),
   );
+  if (!s.combat && s.nodeType !== "encounter") {
+    box.insertAdjacentHTML(
+      "beforeend",
+      `<button type="button" class="choice" id="btnShortRest"><span class="choice-n">☾</span><span>Short rest</span></button>
+       <button type="button" class="choice" id="btnLongRest"><span class="choice-n">☼</span><span>Long rest</span></button>`,
+    );
+    $("btnShortRest").addEventListener("click", () => send({ action: "SHORT_REST", roomCode: s.roomCode }));
+    $("btnLongRest").addEventListener("click", () => send({ action: "LONG_REST", roomCode: s.roomCode }));
+  }
 }
 
 async function renderStory(s: RoomState) {

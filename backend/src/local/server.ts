@@ -28,7 +28,11 @@ import {
   setPuzzleDraft,
   volunteerCheck,
   combatAttack,
+  combatAim,
+  combatReact,
   combatEndTurn,
+  shortRest,
+  longRest,
   mapMove,
   combatMove,
   withdraw,
@@ -68,6 +72,7 @@ type ClientMsg = {
   mapY?: number;
   abilityId?: string;
   targetId?: string;
+  accept?: boolean;
   saveId?: string;
   intent?: string;
   draft?: ChargenDraft;
@@ -487,7 +492,28 @@ function handle(sock: Sock, msg: ClientMsg): void {
     }
     case "PERFORM_ACTION": {
       if (!msg.roomCode || !msg.abilityId) throw new Error("MISSING_FIELDS");
-      broadcast(combatAttack(msg.roomCode, pid(), msg.abilityId, msg.targetId).roomCode);
+      const dest = msg.x !== undefined && msg.y !== undefined ? { x: msg.x, y: msg.y } : undefined;
+      broadcast(combatAttack(msg.roomCode, pid(), msg.abilityId, msg.targetId, dest).roomCode);
+      return;
+    }
+    case "AIM_ACTION": {
+      if (!msg.roomCode || !msg.abilityId) throw new Error("MISSING_FIELDS");
+      broadcast(combatAim(msg.roomCode, pid(), msg.abilityId).roomCode);
+      return;
+    }
+    case "REACT": {
+      if (!msg.roomCode || msg.accept === undefined) throw new Error("MISSING_FIELDS");
+      broadcast(combatReact(msg.roomCode, pid(), msg.accept).roomCode);
+      return;
+    }
+    case "SHORT_REST": {
+      if (!msg.roomCode) throw new Error("MISSING_FIELDS");
+      broadcast(shortRest(msg.roomCode).roomCode);
+      return;
+    }
+    case "LONG_REST": {
+      if (!msg.roomCode) throw new Error("MISSING_FIELDS");
+      broadcast(longRest(msg.roomCode).roomCode);
       return;
     }
     case "END_TURN": {

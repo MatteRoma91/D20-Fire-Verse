@@ -10,6 +10,7 @@ import {
   publicCast,
   type StoryNode,
 } from "./campaign.js";
+import type { CombatToken } from "./combat.js";
 import {
   applyDisconnectDodge,
   endTurn,
@@ -17,8 +18,14 @@ import {
   performAttack,
   proposeMove,
   publicCombat,
+  requestAim,
+  resolveReaction,
   startCombat,
+  exportVitals,
+  longRestResources,
+  shortRestResources,
   type CombatState,
+  type Vitals,
 } from "./combat.js";
 import {
   CHECK_MS,
@@ -46,6 +53,7 @@ import {
 import { requestNarration } from "./narration.js";
 import { bindFrame, publishedVersion } from "./catalog.js";
 import { DATA_DIR } from "./paths.js";
+import { initSheet } from "./srd-sheet.js";
 import type { Player } from "./types.js";
 
 export type { Player };
@@ -73,6 +81,10 @@ export type Room = {
   fx?: "arrows";
   /** Piercing taken in the corridor, subtracted from HP when a fight starts. */
   wounds?: Record<string, number>;
+  /** Slots and class resources that survive a fight. */
+  vitals?: Record<string, Vitals>;
+  /** State at the moment a fight began, restored if the party retries. */
+  combatSnapshot?: { wounds?: Record<string, number>; vitals?: Record<string, Vitals> };
   combat?: CombatState;
   /** The fight that just ended, kept so the table can play its last blow. */
   outro?: { combat: CombatState; text: string };
@@ -491,7 +503,11 @@ function goTo(room: Room, nextId: string): void {
   room.nodeId = nextId;
   if (node.type === "encounter" && node.encounterId) {
     if (room.players.length < 1) throw new Error("NEED_PLAYER");
-    room.combat = startCombat(node.encounterId, room.players, room.wounds);
+    room.combatSnapshot = {
+      wounds: room.wounds ? { ...room.wounds } : undefined,
+      vitals: room.vitals ? structuredClone(room.vitals) : undefined,
+    };
+    room.combat = startCombat(node.encounterId, room.players, room.wounds, room.vitals);
     const encounter = getEncounter(node.encounterId);
     narrate(room, encounter?.intro ?? `${encounter?.name ?? "Foes"} block the way. Steel out.`);
   } else {
@@ -1161,6 +1177,10 @@ export function retryCombat(roomCode: string): Room {
   const node = getNode(room.nodeId);
   if (node?.type !== "encounter") throw new Error("NO_COMBAT");
   if (room.combat?.status === "active") throw new Error("COMBAT_ACTIVE");
+  if (room.combatSnapshot) {
+    room.wounds = room.combatSnapshot.wounds ? { ...room.combatSnapshot.wounds } : {};
+    room.vitals = room.combatSnapshot.vitals ? structuredClone(room.combatSnapshot.vitals) : {};
+  }
   goTo(room, room.nodeId);
   const line = "Breath returns. Steel is lifted again. The fight begins anew.";
   narrate(room, `${line}\n\n${room.lastNarration ?? ""}`.trim(), `${line} ${room.voiceText ?? ""}`.trim());
@@ -1192,10 +1212,124 @@ export function combatMove(roomCode: string, playerId: string, x: number, y: num
   return room;
 }
 
-export function combatAttack(roomCode: string, playerId: string, abilityId: string, targetId?: string): Room {
+export function combatAttack(
+  roomCode: string,
+  playerId: string,
+  abilityId: string,
+  targetId?: string,
+  dest?: { x: number; y: number },
+): Room {
   const room = requireRoom(roomCode);
-  performAttack(requireCombat(room), playerId, abilityId, targetId);
+  performAttack(requireCombat(room), playerId, abilityId, targetId, dest);
   afterCombatAction(room);
+  return room;
+}
+
+export function combatAim(roomCode: string, playerId: string, abilityId: string): Room {
+  const room = requireRoom(roomCode);
+  requestAim(requireCombat(room), playerId, abilityId);
+  touch(room);
+  return room;
+}
+
+export function combatReact(roomCode: string, playerId: string, accept: boolean): Room {
+  const room = requireRoom(roomCode);
+  resolveReaction(requireCombat(room), playerId, accept);
+  afterCombatAction(room);
+  return room;
+}
+
+function eachHero(room: Room, apply: (tokenId: string, pregen: NonNullable<ReturnType<typeof getPregen>>) => void): void {
+  for (const player of room.players) {
+    const pregen = getPregen(player.characterId);
+    if (pregen) apply(player.playerId, pregen);
+  }
+}
+
+export function shortRest(roomCode: string): Room {
+  const room = requireRoom(roomCode);
+  if (room.combat?.status === "active") throw new Error("COMBAT_ACTIVE");
+  if (!room.vitals) room.vitals = {};
+  if (!room.wounds) room.wounds = {};
+  const notes: string[] = [];
+  eachHero(room, (playerId, pregen) => {
+    const missing = room.wounds?.[playerId] ?? 0;
+    const token = {
+      hp: Math.max(0, pregen.hp - missing),
+      maxHp: pregen.hp,
+      kind: "pc" as const,
+      id: playerId,
+      name: pregen.name,
+      x: 0,
+      y: 0,
+      ac: pregen.ac,
+      speedCells: 6,
+      movementLeft: 0,
+      hasAction: false,
+      hasBonusAction: false,
+      initiative: 0,
+      actionIds: [],
+      bonusActionIds: [],
+      inventory: [],
+      dead: false,
+      dodging: false,
+      disengaging: false,
+      hidden: false,
+      secondWindUsed: false,
+    } as CombatToken;
+    initSheet(token, pregen, room.vitals?.[playerId]);
+    if ((token.hitDice ?? 0) > 0 && token.hp > 0 && token.hp < token.maxHp) {
+      const die = rollNotation(`1d${token.hitDie ?? 8}`);
+      const gain = Math.max(0, die.total + Math.floor(((pregen.abilities.con ?? 10) - 10) / 2));
+      token.hp = Math.min(token.maxHp, token.hp + gain);
+      notes.push(`${pregen.name} spends a hit die and recovers ${gain}`);
+    }
+    shortRestResources(token, pregen);
+    room.wounds![playerId] = Math.max(0, token.maxHp - token.hp);
+    room.vitals![playerId] = exportVitals(token);
+  });
+  const line = notes.length ? `${notes.join(". ")}.` : "The party catches a short rest.";
+  narrate(room, line);
+  touch(room);
+  return room;
+}
+
+export function longRest(roomCode: string): Room {
+  const room = requireRoom(roomCode);
+  if (room.combat?.status === "active") throw new Error("COMBAT_ACTIVE");
+  if (!room.vitals) room.vitals = {};
+  if (!room.wounds) room.wounds = {};
+  eachHero(room, (playerId, pregen) => {
+    const token = {
+      hp: pregen.hp,
+      maxHp: pregen.hp,
+      kind: "pc" as const,
+      id: playerId,
+      name: pregen.name,
+      x: 0,
+      y: 0,
+      ac: pregen.ac,
+      speedCells: 6,
+      movementLeft: 0,
+      hasAction: false,
+      hasBonusAction: false,
+      initiative: 0,
+      actionIds: [] as string[],
+      bonusActionIds: [] as string[],
+      inventory: [] as string[],
+      dead: false,
+      dodging: false,
+      disengaging: false,
+      hidden: false,
+      secondWindUsed: false,
+    } as CombatToken;
+    initSheet(token, pregen, room.vitals?.[playerId]);
+    longRestResources(token, pregen);
+    room.wounds![playerId] = 0;
+    room.vitals![playerId] = exportVitals(token);
+  });
+  narrate(room, "A long rest. Wounds close, spells return, and the party stands ready.");
+  touch(room);
   return room;
 }
 
@@ -1210,6 +1344,13 @@ export function combatEndTurn(roomCode: string, playerId: string): Room {
 
 function finishCombat(room: Room): void {
   const combat = requireCombat(room);
+  if (!room.wounds) room.wounds = {};
+  if (!room.vitals) room.vitals = {};
+  for (const token of combat.tokens) {
+    if (token.kind !== "pc" || !token.playerId) continue;
+    room.wounds[token.playerId] = token.dead ? token.maxHp : Math.max(0, token.maxHp - token.hp);
+    room.vitals[token.playerId] = exportVitals(token);
+  }
   const node = getNode(room.nodeId);
   if (node?.encounterId === "lab_infernal_spider") setFlags(room, ["spider_dead"]);
   if (node?.encounterId === "corridor_magma_rat") setFlags(room, ["magma_done"]);

@@ -433,6 +433,25 @@ export function buildCharacter(draft: ChargenDraft, rolledPool?: number[]): Preg
       throw new Error(`NEED_${need}_SPELLS`);
     }
   }
+  if (cls.preparedFormula && cls.spellLists && !cls.spellsKnown) {
+    const ability = cls.spellAbility ?? "int";
+    const mod = abilityMod(abilities[ability] ?? 10);
+    const raw = cls.preparedFormula.includes("half") ? mod + Math.floor(draft.level / 2) : mod + draft.level;
+    const pool = [
+      ...(cls.spellLists["1"] ?? []),
+      ...(draft.level >= 3 ? cls.spellLists["2"] ?? [] : []),
+    ];
+    const need = Math.max(1, Math.min(raw, pool.length));
+    while (spellsKnown.length < need) {
+      const next = pool.find((spell) => !spellsKnown.includes(spell));
+      if (!next) break;
+      spellsKnown.push(next);
+    }
+    if (spellsKnown.length !== need) throw new Error(`NEED_${need}_SPELLS`);
+    for (const spell of spellsKnown) {
+      if (!pool.includes(spell)) throw new Error("BAD_SPELL");
+    }
+  }
 
   const { ac, armor, shield } = computeAc(cls, abilities, fightingStyle);
   const hp = computeHp(draft, cls, race, abilities);
@@ -519,6 +538,7 @@ export function buildCharacter(draft: ChargenDraft, rolledPool?: number[]): Preg
     skills: allSkills,
     features: [...new Set(features)],
     spellSlots: spellSlotsFor(cls, draft.level),
+    spellAbility: cls.spellAbility,
     cantrips,
     spellsKnown,
     fightingStyle,

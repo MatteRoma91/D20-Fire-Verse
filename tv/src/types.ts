@@ -77,7 +77,7 @@ export type MenuAction = {
   actionType: string;
   economy: string;
   needsTarget: boolean;
-  targetKind: "enemy" | "ally" | "none";
+  targetKind: "enemy" | "ally" | "none" | "cell";
   range: number;
   guided: boolean;
   available: boolean;
@@ -99,6 +99,8 @@ export type CombatPublic = {
   log: string[];
   events: CombatEvent[];
   status: "active" | "victory" | "defeat";
+  pendingReaction?: { playerId: string; prompt: string; acceptLabel: string; declineLabel: string } | null;
+  aimRequest?: { playerId: string; abilityId: string } | null;
   actions: MenuAction[];
   actionMenu: {
     movement: { left: number; speed: number; hint: string };

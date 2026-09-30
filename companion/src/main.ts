@@ -38,7 +38,7 @@ function speechCtor(): SpeechSessionCtor | null {
 type Pregen = { id: string; name: string; summary: string; class: string; race?: string; level: number; portrait?: string };
 type Seat = { playerId: string; characterId: string; characterName: string; portrait: string };
 type Token = { id: string; playerId?: string; name: string; hp: number; maxHp: number; ac: number; dead: boolean; kind: string };
-type MenuAction = { id: string; name: string; available: boolean };
+type MenuAction = { id: string; name: string; available: boolean; targetKind: string };
 type PuzzleState = {
   kind: string;
   picked: string[];
@@ -77,7 +77,8 @@ type TableState = {
     currentTokenId?: string;
     currentName?: string;
     tokens: Token[];
-    actionMenu: { actions: MenuAction[] } | null;
+    actionMenu: { actions: MenuAction[]; bonusActions?: MenuAction[] } | null;
+    pendingReaction?: { playerId: string; prompt: string; acceptLabel: string; declineLabel: string } | null;
   } | null;
   localPlayerId: string | null;
 };
@@ -261,14 +262,21 @@ function renderSeat() {
     turn.hidden = false;
     turn.className = `turn ${mine ? "mine" : ""}`;
     turn.textContent = token?.dead ? "You are down — your allies can still turn this." : mine ? "Your turn" : `Round ${combat.round} · ${combat.currentName ?? "…"} is acting`;
-    const menu = combat.actionMenu?.actions ?? [];
-    const missile = menu.find((a) => a.id === "spell_magic_missile");
-    controls.innerHTML = mine
-      ? `<button type="button" class="primary big" data-intent="attack_nearest">Attack the nearest foe</button>
-         ${missile ? `<button type="button" data-intent="cast_magic_missile" ${missile.available ? "" : "disabled"}>Magic Missile</button>` : ""}
-         <button type="button" data-intent="end_turn">End turn</button>
-         <p class="meta">Moving and aiming happen on the television with the remote.</p>`
-      : "";
+    const pending = combat.pendingReaction;
+    const mineReact = pending && pending.playerId === seat.playerId;
+    const actions = combat.actionMenu?.actions ?? [];
+    const bonus = combat.actionMenu?.bonusActions ?? [];
+    const button = (a: MenuAction) =>
+      `<button type="button" data-ability="${esc(a.id)}" data-target="${esc(a.targetKind)}" ${a.available ? "" : "disabled"}>${esc(a.name)}</button>`;
+    controls.innerHTML = mineReact
+      ? `<p class="meta">${esc(pending.prompt)}</p>
+         <button type="button" class="primary" data-react="yes">${esc(pending.acceptLabel)}</button>
+         <button type="button" data-react="no">${esc(pending.declineLabel)}</button>`
+      : mine
+        ? `${actions.map(button).join("")}${bonus.map(button).join("")}
+           <button type="button" class="primary" data-intent="end_turn">End turn</button>
+           <p class="meta">A targeted action is aimed with the television remote.</p>`
+        : "";
   } else {
     turn.hidden = true;
     if (s.skillCheck && s.nodeType === "skill_check") {
@@ -306,6 +314,7 @@ function renderSeat() {
       const voting = !!(s.vote && s.players.length > 1);
       const sec = voting ? Math.ceil(s.vote!.remainingMs / 1000) : 0;
       controls.innerHTML =
+        `<button type="button" data-rest="short">Short rest</button><button type="button" data-rest="long">Long rest</button>` +
         (voting ? `<p class="meta">Party vote · ${sec}s left</p>` : "") +
         s.choices
           .map((c, i) => {
@@ -315,6 +324,29 @@ function renderSeat() {
           .join("");
     }
   }
+  controls.querySelectorAll<HTMLElement>("[data-ability]").forEach((b) =>
+    b.addEventListener("click", () => {
+      const id = b.dataset.ability;
+      if (!id) return;
+      if (navigator.vibrate) navigator.vibrate(12);
+      const needsAim = b.dataset.target === "enemy" || b.dataset.target === "ally" || b.dataset.target === "cell";
+      send(
+        needsAim
+          ? { action: "AIM_ACTION", roomCode: s.roomCode, playerId, abilityId: id }
+          : { action: "PERFORM_ACTION", roomCode: s.roomCode, playerId, abilityId: id },
+      );
+    }),
+  );
+  controls.querySelectorAll<HTMLElement>("[data-react]").forEach((b) =>
+    b.addEventListener("click", () => {
+      send({ action: "REACT", roomCode: s.roomCode, playerId, accept: b.dataset.react === "yes" });
+    }),
+  );
+  controls.querySelectorAll<HTMLElement>("[data-rest]").forEach((b) =>
+    b.addEventListener("click", () => {
+      send({ action: b.dataset.rest === "long" ? "LONG_REST" : "SHORT_REST", roomCode: s.roomCode, playerId });
+    }),
+  );
   controls.querySelectorAll<HTMLElement>("[data-intent]").forEach((b) =>
     b.addEventListener("click", () => {
       if (navigator.vibrate) navigator.vibrate(12);

@@ -437,6 +437,15 @@ export class CombatUi {
   private paintActions() {
     const c = this.combat;
     if (!c) return;
+    const pending = c.pendingReaction;
+    if (pending && pending.playerId === this.playerId) {
+      this.el.actions.innerHTML = `<p class="meta">${esc(pending.prompt)}</p>
+        <button type="button" class="act action" id="reactYes"><strong>${esc(pending.acceptLabel)}</strong></button>
+        <button type="button" class="act end" id="reactNo"><strong>${esc(pending.declineLabel)}</strong></button>`;
+      this.el.actions.querySelector("#reactYes")?.addEventListener("click", () => this.send({ action: "REACT", accept: true }));
+      this.el.actions.querySelector("#reactNo")?.addEventListener("click", () => this.send({ action: "REACT", accept: false }));
+      return;
+    }
     const can = this.canAct();
     const menu = c.actionMenu;
     const acts = menu && can ? menu.actions : (c.sheet?.actions as MenuAction[] | undefined) ?? [];
@@ -502,6 +511,11 @@ export class CombatUi {
     this.displayTurnId = c.currentTokenId;
     this.paintChrome();
     this.host.onDefeatChange(c.status === "defeat");
+    const aim = c.aimRequest;
+    if (aim && aim.playerId === this.playerId && this.myTurn() && !this.aim) {
+      const action = this.menu().find((item) => item.id === aim.abilityId);
+      if (action) this.useAction(action);
+    }
     if (this.myTurn()) {
       const me = this.me()!;
       if (!me.hasAction && !me.hasBonusAction && me.movementLeft <= 0) {
@@ -539,7 +553,7 @@ export class CombatUi {
       this.host.toast(a.economy === "bonus_action" ? "Your bonus action is spent this turn." : "Your action is spent this turn.", "bad");
       return;
     }
-    if (a.needsTarget || a.targetKind === "ally") {
+    if (a.needsTarget || a.targetKind === "ally" || a.targetKind === "cell") {
       this.aim = { action: a };
       const me = this.me()!;
       const targets = this.aimTargets(a).sort((x, y) => cheb(x, me) - cheb(y, me));
@@ -580,6 +594,22 @@ export class CombatUi {
     const at = this.tokenAt(this.cursor);
     if (this.aim) {
       const a = this.aim.action;
+      if (a.targetKind === "cell") {
+        if (!this.isReachable(this.cursor) && cheb(this.cursor, me) > Math.max(1, a.range)) {
+          sfx("uiError");
+          this.host.toast("That square is out of reach.", "bad");
+          return;
+        }
+        if (cheb(this.cursor, me) > Math.max(1, a.range) || this.tokenAt(this.cursor)) {
+          sfx("uiError");
+          this.host.toast("Pick an empty square in range.", "bad");
+          return;
+        }
+        this.aim = null;
+        sfx("uiConfirm");
+        this.send({ action: "PERFORM_ACTION", abilityId: a.id, x: this.cursor.x, y: this.cursor.y });
+        return;
+      }
       const valid = this.aimTargets(a).find((t) => t.id === at?.id);
       if (!valid) {
         sfx("uiError");
@@ -634,7 +664,7 @@ export class CombatUi {
   private moveCursor(dir: "up" | "down" | "left" | "right") {
     const { cols, rows } = this.board?.size() ?? { cols: 1, rows: 1 };
     const d = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] }[dir] as [number, number];
-    if (this.aim) {
+    if (this.aim && this.aim.action.targetKind !== "cell") {
       const me = this.me();
       const pool = this.aimTargets(this.aim.action).filter((t) => t.x !== this.cursor.x || t.y !== this.cursor.y);
       const scored = pool

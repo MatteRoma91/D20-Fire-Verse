@@ -20,6 +20,7 @@
   "guidedDefaultAction": "longsword_attack",
   "savingThrows": ["str", "con"],
   "skills": ["athletics", "perception", "intimidation", "survival"],
+  "fightingStyle": "defense",
   "features": ["fighting_style_defense", "action_surge", "second_wind"],
   "inventory": ["potion_healing"],
   "flavor": "Ex-militia from Luppolandia. Misses Tashalar Pale Ale more than she admits."

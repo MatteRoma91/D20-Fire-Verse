@@ -235,8 +235,8 @@
       "spellsKnown": { "1": 4, "2": 5, "3": 6 },
       "spellLists": {
         "cantrips": ["vicious_mockery", "mage_hand", "light"],
-        "1": ["spell_cure_wounds", "spell_magic_missile", "spell_shield", "spell_detect_magic", "spell_sleep", "spell_heroism"],
-        "2": []
+        "1": ["spell_cure_wounds", "spell_healing_word", "spell_dissonant_whispers", "spell_faerie_fire", "spell_thunderwave"],
+        "2": ["spell_hold_person", "spell_invisibility", "spell_shatter"]
       },
       "primaryWeapons": ["dagger", "shortsword"],
       "actionsByLevel": {
@@ -272,8 +272,8 @@
       },
       "spellLists": {
         "cantrips": ["sacred_flame", "light", "thaumaturgy"],
-        "1": ["spell_cure_wounds", "spell_guiding_bolt", "spell_bless"],
-        "2": ["spell_spiritual_weapon"]
+        "1": ["spell_cure_wounds", "spell_guiding_bolt", "spell_bless", "spell_healing_word", "spell_inflict_wounds", "spell_shield_of_faith"],
+        "2": ["spell_spiritual_weapon", "spell_hold_person", "spell_lesser_restoration", "spell_aid", "spell_blindness"]
       },
       "primaryWeapons": ["mace"],
       "actionsByLevel": {
@@ -302,8 +302,8 @@
       "preparedFormula": "wis+level",
       "spellLists": {
         "cantrips": ["druidcraft", "produce_flame"],
-        "1": ["spell_cure_wounds", "spell_entangle"],
-        "2": []
+        "1": ["spell_cure_wounds", "spell_entangle", "spell_healing_word", "spell_faerie_fire", "spell_thunderwave"],
+        "2": ["spell_barkskin", "spell_lesser_restoration", "spell_hold_person"]
       },
       "primaryWeapons": ["scimitar", "quarterstaff"],
       "actionsByLevel": {
@@ -465,8 +465,8 @@
       "spellsKnown": { "1": 2, "2": 3, "3": 4 },
       "spellLists": {
         "cantrips": ["fire_bolt", "light", "mage_hand", "prestidigitation"],
-        "1": ["spell_magic_missile", "spell_burning_hands", "spell_shield"],
-        "2": []
+        "1": ["spell_magic_missile", "spell_burning_hands", "spell_shield", "spell_chromatic_orb", "spell_sleep"],
+        "2": ["spell_scorching_ray", "spell_misty_step", "spell_blur"]
       },
       "primaryWeapons": ["dagger", "quarterstaff"],
       "actionsByLevel": {
@@ -495,8 +495,8 @@
       "spellsKnown": { "1": 2, "2": 3, "3": 4 },
       "spellLists": {
         "cantrips": ["eldritch_blast", "mage_hand"],
-        "1": ["spell_magic_missile", "spell_burning_hands", "spell_hex"],
-        "2": []
+        "1": ["spell_magic_missile", "spell_burning_hands", "spell_hex", "spell_sleep"],
+        "2": ["spell_misty_step", "spell_hold_person", "spell_invisibility", "spell_shatter"]
       },
       "primaryWeapons": ["dagger", "light_crossbow"],
       "actionsByLevel": {
@@ -527,8 +527,8 @@
       "preparedFormula": "int+level",
       "spellLists": {
         "cantrips": ["fire_bolt", "light", "mage_hand", "prestidigitation", "ray_of_frost"],
-        "1": ["spell_magic_missile", "spell_burning_hands", "spell_shield", "spell_mage_armor", "spell_detect_magic", "spell_sleep"],
-        "2": ["spell_misty_step", "spell_scorching_ray"]
+        "1": ["spell_magic_missile", "spell_burning_hands", "spell_shield", "spell_mage_armor", "spell_sleep", "spell_thunderwave", "spell_chromatic_orb"],
+        "2": ["spell_misty_step", "spell_scorching_ray", "spell_shatter", "spell_hold_person", "spell_blur", "spell_invisibility"]
       },
       "primaryWeapons": ["quarterstaff", "dagger"],
       "actionsByLevel": {
@@ -578,16 +578,32 @@
     "spell_shield": { "label": "Shield", "level": 1, "combat": true },
     "spell_cure_wounds": { "label": "Cure Wounds", "level": 1, "combat": true },
     "spell_guiding_bolt": { "label": "Guiding Bolt", "level": 1, "combat": true },
-    "spell_bless": { "label": "Bless", "level": 1 },
-    "spell_mage_armor": { "label": "Mage Armor", "level": 1 },
+    "spell_bless": { "label": "Bless", "level": 1, "combat": true },
+    "spell_mage_armor": { "label": "Mage Armor", "level": 1, "combat": true },
     "spell_detect_magic": { "label": "Detect Magic", "level": 1 },
-    "spell_sleep": { "label": "Sleep", "level": 1 },
-    "spell_entangle": { "label": "Entangle", "level": 1 },
+    "spell_sleep": { "label": "Sleep", "level": 1, "combat": true },
+    "spell_entangle": { "label": "Entangle", "level": 1, "combat": true },
     "spell_hunters_mark": { "label": "Hunter's Mark", "level": 1, "combat": true },
-    "spell_hex": { "label": "Hex", "level": 1 },
+    "spell_hex": { "label": "Hex", "level": 1, "combat": true },
     "spell_heroism": { "label": "Heroism", "level": 1 },
-    "spell_misty_step": { "label": "Misty Step", "level": 2 },
-    "spell_scorching_ray": { "label": "Scorching Ray", "level": 2 },
-    "spell_spiritual_weapon": { "label": "Spiritual Weapon", "level": 2 }
+    "spell_thunderwave": { "label": "Thunderwave", "level": 1, "combat": true },
+    "spell_chromatic_orb": { "label": "Chromatic Orb", "level": 1, "combat": true },
+    "spell_healing_word": { "label": "Healing Word", "level": 1, "combat": true },
+    "spell_inflict_wounds": { "label": "Inflict Wounds", "level": 1, "combat": true },
+    "spell_shield_of_faith": { "label": "Shield of Faith", "level": 1, "combat": true },
+    "spell_faerie_fire": { "label": "Faerie Fire", "level": 1, "combat": true },
+    "spell_dissonant_whispers": { "label": "Dissonant Whispers", "level": 1, "combat": true },
+    "spell_grease": { "label": "Grease", "level": 1, "combat": true },
+    "spell_misty_step": { "label": "Misty Step", "level": 2, "combat": true },
+    "spell_scorching_ray": { "label": "Scorching Ray", "level": 2, "combat": true },
+    "spell_spiritual_weapon": { "label": "Spiritual Weapon", "level": 2, "combat": true },
+    "spell_shatter": { "label": "Shatter", "level": 2, "combat": true },
+    "spell_hold_person": { "label": "Hold Person", "level": 2, "combat": true },
+    "spell_blindness": { "label": "Blindness", "level": 2, "combat": true },
+    "spell_blur": { "label": "Blur", "level": 2, "combat": true },
+    "spell_invisibility": { "label": "Invisibility", "level": 2, "combat": true },
+    "spell_barkskin": { "label": "Barkskin", "level": 2, "combat": true },
+    "spell_lesser_restoration": { "label": "Lesser Restoration", "level": 2, "combat": true },
+    "spell_aid": { "label": "Aid", "level": 2, "combat": true }
   }
 }

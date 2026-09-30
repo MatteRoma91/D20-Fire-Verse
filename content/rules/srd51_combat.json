@@ -1,0 +1,323 @@
+{
+  "fire_bolt": {
+    "id": "fire_bolt",
+    "name": "Fire Bolt",
+    "actionType": "action",
+    "level": 0,
+    "combat": true,
+    "effects": [{ "type": "attack", "spellAttack": true, "ability": "spell", "rangeCells": 24, "damage": [{ "dice": "1d10", "damageType": "fire" }] }]
+  },
+  "ray_of_frost": {
+    "id": "ray_of_frost",
+    "name": "Ray of Frost",
+    "actionType": "action",
+    "level": 0,
+    "combat": true,
+    "effects": [{ "type": "attack", "spellAttack": true, "ability": "spell", "rangeCells": 12, "damage": [{ "dice": "1d8", "damageType": "cold" }], "onHit": [{ "type": "condition", "condition": "slowed" }] }]
+  },
+  "sacred_flame": {
+    "id": "sacred_flame",
+    "name": "Sacred Flame",
+    "actionType": "action",
+    "level": 0,
+    "combat": true,
+    "effects": [{ "type": "save", "shape": "one", "ability": "dex", "dcFrom": "spell", "rangeCells": 12, "damage": [{ "dice": "1d8", "damageType": "radiant" }] }]
+  },
+  "produce_flame": {
+    "id": "produce_flame",
+    "name": "Produce Flame",
+    "actionType": "action",
+    "level": 0,
+    "combat": true,
+    "effects": [{ "type": "attack", "spellAttack": true, "ability": "spell", "rangeCells": 6, "damage": [{ "dice": "1d8", "damageType": "fire" }] }]
+  },
+  "vicious_mockery": {
+    "id": "vicious_mockery",
+    "name": "Vicious Mockery",
+    "actionType": "action",
+    "level": 0,
+    "combat": true,
+    "effects": [{ "type": "save", "shape": "one", "ability": "wis", "dcFrom": "spell", "rangeCells": 12, "damage": [{ "dice": "1d4", "damageType": "psychic" }], "onFail": "mocked" }]
+  },
+  "eldritch_blast": {
+    "id": "eldritch_blast",
+    "name": "Eldritch Blast",
+    "actionType": "action",
+    "level": 0,
+    "combat": true,
+    "effects": [{ "type": "attack", "spellAttack": true, "ability": "spell", "rangeCells": 24, "damage": [{ "dice": "1d10", "damageType": "force" }] }]
+  },
+  "spell_mage_armor": {
+    "id": "spell_mage_armor",
+    "name": "Mage Armor",
+    "actionType": "action",
+    "level": 1,
+    "combat": true,
+    "effects": [{ "type": "mage_armor", "slot": 1 }]
+  },
+  "spell_sleep": {
+    "id": "spell_sleep",
+    "name": "Sleep",
+    "actionType": "action",
+    "level": 1,
+    "combat": true,
+    "effects": [{ "type": "sleep", "dice": "5d8", "rangeCells": 8, "radius": 4, "slot": 1, "scaling": { "2": "7d8" } }]
+  },
+  "spell_thunderwave": {
+    "id": "spell_thunderwave",
+    "name": "Thunderwave",
+    "actionType": "action",
+    "level": 1,
+    "combat": true,
+    "effects": [{ "type": "save", "shape": "cube", "ability": "con", "dcFrom": "spell", "lengthCells": 2, "damage": [{ "dice": "2d8", "damageType": "thunder" }], "halfOnSuccess": true, "slot": 1, "scaling": { "2": "3d8" } }]
+  },
+  "spell_chromatic_orb": {
+    "id": "spell_chromatic_orb",
+    "name": "Chromatic Orb",
+    "actionType": "action",
+    "level": 1,
+    "combat": true,
+    "effects": [{ "type": "attack", "spellAttack": true, "ability": "spell", "rangeCells": 18, "damage": [{ "dice": "3d8", "damageType": "fire" }], "slot": 1, "scaling": { "2": "4d8" } }]
+  },
+  "spell_healing_word": {
+    "id": "spell_healing_word",
+    "name": "Healing Word",
+    "actionType": "bonus_action",
+    "level": 1,
+    "combat": true,
+    "effects": [{ "type": "heal", "dice": "1d4", "ability": "spell", "rangeCells": 12, "slot": 1, "scaling": { "2": "2d4" } }]
+  },
+  "spell_inflict_wounds": {
+    "id": "spell_inflict_wounds",
+    "name": "Inflict Wounds",
+    "actionType": "action",
+    "level": 1,
+    "combat": true,
+    "effects": [{ "type": "attack", "spellAttack": true, "ability": "spell", "rangeCells": 1, "damage": [{ "dice": "3d10", "damageType": "necrotic" }], "slot": 1, "scaling": { "2": "4d10" } }]
+  },
+  "spell_shield_of_faith": {
+    "id": "spell_shield_of_faith",
+    "name": "Shield of Faith",
+    "actionType": "bonus_action",
+    "level": 1,
+    "combat": true,
+    "effects": [{ "type": "ward", "acBonus": 2, "rangeCells": 12, "concentration": true, "slot": 1 }]
+  },
+  "spell_entangle": {
+    "id": "spell_entangle",
+    "name": "Entangle",
+    "actionType": "action",
+    "level": 1,
+    "combat": true,
+    "effects": [{ "type": "save", "shape": "sphere", "ability": "dex", "dcFrom": "spell", "lengthCells": 4, "radius": 2, "onFail": "restrained", "concentration": true, "slot": 1, "damage": [{ "dice": "0", "damageType": "none" }] }]
+  },
+  "spell_faerie_fire": {
+    "id": "spell_faerie_fire",
+    "name": "Faerie Fire",
+    "actionType": "action",
+    "level": 1,
+    "combat": true,
+    "effects": [{ "type": "save", "shape": "sphere", "ability": "dex", "dcFrom": "spell", "lengthCells": 12, "radius": 2, "onFail": "outlined", "concentration": true, "slot": 1, "damage": [{ "dice": "0", "damageType": "none" }] }]
+  },
+  "spell_dissonant_whispers": {
+    "id": "spell_dissonant_whispers",
+    "name": "Dissonant Whispers",
+    "actionType": "action",
+    "level": 1,
+    "combat": true,
+    "effects": [{ "type": "save", "shape": "one", "ability": "wis", "dcFrom": "spell", "rangeCells": 12, "damage": [{ "dice": "3d6", "damageType": "psychic" }], "halfOnSuccess": false, "slot": 1, "scaling": { "2": "4d6" } }]
+  },
+  "spell_grease": {
+    "id": "spell_grease",
+    "name": "Grease",
+    "actionType": "action",
+    "level": 1,
+    "combat": true,
+    "effects": [{ "type": "save", "shape": "sphere", "ability": "dex", "dcFrom": "spell", "lengthCells": 12, "radius": 2, "onFail": "prone", "slot": 1, "damage": [{ "dice": "0", "damageType": "none" }] }]
+  },
+  "spell_hex": {
+    "id": "spell_hex",
+    "name": "Hex",
+    "actionType": "bonus_action",
+    "level": 1,
+    "combat": true,
+    "effects": [{ "type": "brand", "dice": "1d6", "rangeCells": 18, "concentration": true, "slot": 1 }]
+  },
+  "spell_misty_step": {
+    "id": "spell_misty_step",
+    "name": "Misty Step",
+    "actionType": "bonus_action",
+    "level": 2,
+    "combat": true,
+    "aim": "cell",
+    "effects": [{ "type": "teleport", "rangeCells": 6, "slot": 2 }]
+  },
+  "spell_scorching_ray": {
+    "id": "spell_scorching_ray",
+    "name": "Scorching Ray",
+    "actionType": "action",
+    "level": 2,
+    "combat": true,
+    "effects": [{ "type": "rays", "rays": 3, "spellAttack": true, "ability": "spell", "rangeCells": 24, "damage": [{ "dice": "2d6", "damageType": "fire" }], "slot": 2 }]
+  },
+  "spell_shatter": {
+    "id": "spell_shatter",
+    "name": "Shatter",
+    "actionType": "action",
+    "level": 2,
+    "combat": true,
+    "effects": [{ "type": "save", "shape": "sphere", "ability": "con", "dcFrom": "spell", "lengthCells": 12, "radius": 2, "damage": [{ "dice": "3d8", "damageType": "thunder" }], "halfOnSuccess": true, "slot": 2 }]
+  },
+  "spell_hold_person": {
+    "id": "spell_hold_person",
+    "name": "Hold Person",
+    "actionType": "action",
+    "level": 2,
+    "combat": true,
+    "effects": [{ "type": "save", "shape": "one", "ability": "wis", "dcFrom": "spell", "rangeCells": 12, "onFail": "paralyzed", "concentration": true, "slot": 2, "damage": [{ "dice": "0", "damageType": "none" }] }]
+  },
+  "spell_spiritual_weapon": {
+    "id": "spell_spiritual_weapon",
+    "name": "Spiritual Weapon",
+    "actionType": "bonus_action",
+    "level": 2,
+    "combat": true,
+    "effects": [{ "type": "spiritual_weapon", "rangeCells": 12, "slot": 2 }]
+  },
+  "spell_spiritual_weapon_strike": {
+    "id": "spell_spiritual_weapon_strike",
+    "name": "Spiritual Weapon strike",
+    "actionType": "bonus_action",
+    "level": 0,
+    "combat": true,
+    "effects": [{ "type": "attack", "spellAttack": true, "ability": "spell", "rangeCells": 12, "damage": [{ "dice": "1d8", "damageType": "force", "ability": "spell" }] }]
+  },
+  "spell_blindness": {
+    "id": "spell_blindness",
+    "name": "Blindness",
+    "actionType": "action",
+    "level": 2,
+    "combat": true,
+    "effects": [{ "type": "save", "shape": "one", "ability": "con", "dcFrom": "spell", "rangeCells": 6, "onFail": "blinded", "slot": 2, "damage": [{ "dice": "0", "damageType": "none" }] }]
+  },
+  "spell_blur": {
+    "id": "spell_blur",
+    "name": "Blur",
+    "actionType": "action",
+    "level": 2,
+    "combat": true,
+    "effects": [{ "type": "ward", "blur": true, "concentration": true, "slot": 2 }]
+  },
+  "spell_invisibility": {
+    "id": "spell_invisibility",
+    "name": "Invisibility",
+    "actionType": "action",
+    "level": 2,
+    "combat": true,
+    "effects": [{ "type": "ward", "invisible": true, "concentration": true, "rangeCells": 1, "slot": 2 }]
+  },
+  "spell_barkskin": {
+    "id": "spell_barkskin",
+    "name": "Barkskin",
+    "actionType": "action",
+    "level": 2,
+    "combat": true,
+    "effects": [{ "type": "ward", "acFloor": 16, "concentration": true, "slot": 2 }]
+  },
+  "spell_lesser_restoration": {
+    "id": "spell_lesser_restoration",
+    "name": "Lesser Restoration",
+    "actionType": "action",
+    "level": 2,
+    "combat": true,
+    "effects": [{ "type": "restore", "rangeCells": 1, "slot": 2 }]
+  },
+  "spell_aid": {
+    "id": "spell_aid",
+    "name": "Aid",
+    "actionType": "action",
+    "level": 2,
+    "combat": true,
+    "effects": [{ "type": "aid", "amount": 5, "allies": 3, "slot": 2 }]
+  },
+  "rage": {
+    "id": "rage",
+    "name": "Rage",
+    "actionType": "bonus_action",
+    "level": 0,
+    "combat": true,
+    "effects": [{ "type": "rage" }]
+  },
+  "reckless_attack": {
+    "id": "reckless_attack",
+    "name": "Reckless Attack",
+    "actionType": "action",
+    "level": 0,
+    "combat": true,
+    "effects": [{ "type": "reckless" }]
+  },
+  "action_surge": {
+    "id": "action_surge",
+    "name": "Action Surge",
+    "actionType": "action",
+    "level": 0,
+    "combat": true,
+    "effects": [{ "type": "surge" }]
+  },
+  "lay_on_hands": {
+    "id": "lay_on_hands",
+    "name": "Lay on Hands",
+    "actionType": "action",
+    "level": 0,
+    "combat": true,
+    "effects": [{ "type": "pool_heal", "rangeCells": 1 }]
+  },
+  "channel_preserve_life": {
+    "id": "channel_preserve_life",
+    "name": "Channel Divinity: Preserve Life",
+    "actionType": "action",
+    "level": 0,
+    "combat": true,
+    "effects": [{ "type": "channel_preserve" }]
+  },
+  "bardic_inspiration": {
+    "id": "bardic_inspiration",
+    "name": "Bardic Inspiration",
+    "actionType": "bonus_action",
+    "level": 0,
+    "combat": true,
+    "effects": [{ "type": "inspire", "dice": "1d6", "rangeCells": 12 }]
+  },
+  "martial_arts_bonus": {
+    "id": "martial_arts_bonus",
+    "name": "Martial Arts",
+    "actionType": "bonus_action",
+    "level": 0,
+    "combat": true,
+    "effects": [{ "type": "attack", "ability": "dex", "proficient": true, "rangeCells": 1, "damage": [{ "dice": "1d4", "damageType": "bludgeoning", "ability": "dex" }], "sneakAttackEligible": false }]
+  },
+  "ki_flurry": {
+    "id": "ki_flurry",
+    "name": "Flurry of Blows",
+    "actionType": "bonus_action",
+    "level": 0,
+    "combat": true,
+    "effects": [{ "type": "flurry", "ki": 1 }]
+  },
+  "ki_patient_defense": {
+    "id": "ki_patient_defense",
+    "name": "Patient Defense",
+    "actionType": "bonus_action",
+    "level": 0,
+    "combat": true,
+    "effects": [{ "type": "ki_dodge", "ki": 1 }]
+  },
+  "ki_step_of_the_wind": {
+    "id": "ki_step_of_the_wind",
+    "name": "Step of the Wind",
+    "actionType": "bonus_action",
+    "level": 0,
+    "combat": true,
+    "effects": [{ "type": "ki_step", "ki": 1 }]
+  }
+}

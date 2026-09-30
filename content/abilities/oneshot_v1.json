@@ -310,11 +310,11 @@
     "level": 1,
     "effects": [
       {
-        "type": "attack",
-        "spellAttack": false,
-        "ability": "wis",
+        "type": "brand",
+        "dice": "1d6",
         "rangeCells": 18,
-        "damage": [{ "dice": "1d6", "damageType": "weapon" }]
+        "concentration": true,
+        "slot": 1
       }
     ]
   },

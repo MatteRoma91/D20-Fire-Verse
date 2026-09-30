@@ -20,6 +20,10 @@ export type ClientAction =
   | "MAP_MOVE"
   | "PROPOSE_MOVE"
   | "PERFORM_ACTION"
+  | "AIM_ACTION"
+  | "REACT"
+  | "SHORT_REST"
+  | "LONG_REST"
   | "END_TURN"
   | "REQUEST_SAVE"
   | "RESUME_SAVE"
@@ -49,6 +53,7 @@ export type ClientMessage = {
   mapY?: number;
   abilityId?: string;
   targetId?: string;
+  accept?: boolean;
   saveId?: string;
   intent?: string;
   sequence?: string[];
@@ -150,6 +155,7 @@ const ERROR_TEXT: Record<string, string> = {
   NEED_FIGHTING_STYLE: "Pick a fighting style.",
   NEED_DOMAIN: "Pick a divine domain.",
   BAD_CANTRIP: "That cantrip isn't on your class list.",
+  BAD_SPELL: "That spell isn't on your class list.",
   BAD_HP_ROLL: "Hit point rolls must fit your hit die.",
   CONNECTING: "Still reaching the table… one moment.",
   NEED_VOLUNTEER: "Someone at the table must step up for this check.",
@@ -165,6 +171,12 @@ const ERROR_TEXT: Record<string, string> = {
   NOT_CHECK: "There's no skill check open.",
   NO_VOLUNTEER_YET: "Wait for someone to volunteer before you Help.",
   CANNOT_HELP_SELF: "You can't Help your own check.",
+  NO_SLOT: "You have no spell slot left for that.",
+  NO_REACTION: "There is nothing to react to.",
+  REACTION_PENDING: "Someone still has a reaction to answer.",
+  NO_SORCERY: "You don't have enough sorcery points.",
+  NO_KI: "You don't have enough ki.",
+  BONUS_SPELL: "After a bonus-action spell, only a cantrip is left.",
 };
 
 /** Player-facing sentence for a server error code. Never shows a raw code. */
